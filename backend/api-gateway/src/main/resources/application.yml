@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/auth/**
+        - id: vm-service
+          uri: lb://VM-SERVICE
+          predicates:
+            - Path=/vm/**
+          filters:
+            - AuthenticationFilter
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "http://localhost:3000"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+  discovery:
+    locator:
+      enabled: true
+
+server:
+  port: 6061
