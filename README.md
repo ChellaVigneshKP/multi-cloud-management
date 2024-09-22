@@ -59,15 +59,15 @@ Once the application is running, users can interact with the UI to add their clo
 ### Non-Cloud Setup
 - **HTTP Request Performance**:
   ```
-  Label           # Samples  Average  Min  Max   Std. Dev.  Error %  Throughput  Received KB/sec  Sent KB/sec  Avg. Bytes
-  HTTP Request    300       1146     4    4108  1400.85     52.00%   66.44518   84.54            18.36        1302.8
-  TOTAL           300       1146     4    4108  1400.85     52.00%   66.44518   84.54            18.36        1302.8
+  Label           # Samples  Error %
+  HTTP Request    300        52.00%
+  TOTAL           300        52.00%
   ```
 
 ### Docker/Cloud-Based Setup
 - **HTTP Request Performance**:
   ```
-  Label           # Samples  Average  Min  Max   Std. Dev.  Error %  Throughput  Received KB/sec  Sent KB/sec  Avg. Bytes
-  HTTP Request    300       5876     2207 12038 2502.82     0.00%    23.70043   9.67             6.76         418
-  TOTAL           300       5876     2207 12038 2502.82     0.00%    23.70043   9.67             6.76         418
+  Label           # Samples  Error %
+  HTTP Request    300        0.00%
+  TOTAL           300        0.00%
   ```
