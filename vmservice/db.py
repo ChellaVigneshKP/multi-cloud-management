@@ -265,3 +265,51 @@ def get_cloud_accounts_by_user(user_id):
     finally:
         if connection:
             connection.close()
+
+
+def decrypt_aws_credentials(encrypted_access_key_id, encrypted_secret_access_key):
+    """
+    Decrypts the provided AWS credentials using the Fernet cipher.
+    """
+    try:
+        decrypted_access_key_id = cipher.decrypt(encrypted_access_key_id.encode()).decode()
+        decrypted_secret_access_key = cipher.decrypt(encrypted_secret_access_key.encode()).decode()
+        return decrypted_access_key_id, decrypted_secret_access_key
+    except Exception as e:
+        logging.error(f"Error decrypting AWS credentials: {e}")
+        return None, None
+
+
+def get_all_cloud_accounts_by_user(user_id):
+    connection = None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # Fetch AWS Accounts
+            cursor.execute(
+                "SELECT access_key_id, secret_access_key, region FROM aws_cloud_accounts WHERE user_id = %s",
+                (user_id,)
+            )
+            aws_accounts = cursor.fetchall()
+
+            # Decrypt AWS credentials
+            decrypted_aws_accounts = []
+            for row in aws_accounts:
+                decrypted_access_key_id = cipher.decrypt(row[0].encode()).decode()
+                decrypted_secret_access_key = cipher.decrypt(row[1].encode()).decode()
+                region = row[2]
+
+                decrypted_aws_accounts.append({
+                    'access_key_id': decrypted_access_key_id,
+                    'secret_access_key': decrypted_secret_access_key,
+                    'region': region
+                })
+
+            return decrypted_aws_accounts
+
+    except Exception as e:
+        logging.error(f"Error fetching AWS accounts: {e}")
+        return None
+    finally:
+        if connection:
+            connection.close()

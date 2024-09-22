@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+  postgres-auth:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: multi_cloud
+    ports:
+      - "5642:5432"
+    networks:
+      - my_network
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-vmservice:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aws_check
+    ports:
+      - "5643:5432"
+    networks:
+      - my_network
+    volumes:
+      - postgres-vmservice-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - my_network
+  
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    expose:
+      - "9093"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "user-registration:1:1"
+      KAFKA_MAX_MESSAGE_SIZE: 200000000
+      KAFKA_MESSAGE_MAX_BYTES: 200000000
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 200000000
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'describe topics' | kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic __consumer_offsets --from-beginning --timeout-ms 1000"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - my_network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    networks:
+      - my_network
+
+  auth-service:
+    build:
+      context: ./backend/auth
+    ports:
+      - "6060:6060"
+    env_file:
+      - ./backend/auth/src/main/resources/.env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres-auth:5432/multi_cloud
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - my_network
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    env_file:
+      - ./backend/api-gateway/src/main/resources/.env
+    ports:
+      - "6061:6061"
+    depends_on:
+      service-discovery:
+        condition: service_healthy
+    networks:
+      - my_network
+
+  service-discovery:
+    build:
+      context: ./backend/service-registry
+    ports:
+      - "8761:8761"
+    networks:
+      - my_network
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8761/eureka/apps"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  vm-service:
+    build:
+      context: ./vmservice
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./vmservice/.env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres-vmservice:5432/aws_check
+    depends_on:
+      postgres-vmservice:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy  # Wait for Kafka
+    networks:
+      - my_network
+
+volumes:
+  postgres-auth-data:
+  postgres-vmservice-data:
+
+networks:
+  my_network:
+    driver: bridge
