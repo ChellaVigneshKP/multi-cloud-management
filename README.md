@@ -8,8 +8,18 @@ Multi-cloud Manager is a microservice-based application that enables users to ma
 ### Prerequisites
 - Docker and Docker Compose installed on your machine.
 
-### Prerequisites
+### Architecture Diagram
 ![architecture](Archi2.png)
+
+### Technologies Used
+- Spring Boot (Java) for Auth and Gateway services
+- Flask (Python) for VM management
+- Eureka for service discovery
+- Kafka for event-driven communication
+- PostgreSQL as the database
+- Docker and Docker Compose for containerization
+- React for the frontend
+
 
 ### Getting Started
 1. Clone the repository:
@@ -57,6 +67,23 @@ Multi-cloud Manager is a microservice-based application that enables users to ma
 ## Usage Instructions
 Once the application is running, users can interact with the UI to add their cloud accounts and manage their VMs.
 
+## User Interface
+
+### Login Page
+![UI Screenshot](login.png)
+
+### Registration Page
+![UI Screenshot](registration.png)
+
+### Docker Containers
+![UI Screenshot](docker.png)
+
+### Add Cloud Account
+![UI Screenshot](addaccount.png)
+
+### Monitor Cloud Instances
+![UI Screenshot](cloudinstance.png)
+
 ## Performance Results
 
 ### Non-Cloud Setup
@@ -74,3 +101,6 @@ Once the application is running, users can interact with the UI to add their clo
   HTTP Request    300        0.00%
   TOTAL           300        0.00%
   ```
+
+### Docker/Cloud-Based Setup Results
+![UI Screenshot](result.png)
