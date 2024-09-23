@@ -14,7 +14,7 @@ Multi-cloud Manager is a microservice-based application that enables users to ma
 ### Getting Started
 1. Clone the repository:
    ```bash
-   git clone 
+   git clone https://github.com/ChellaVigneshKP/multi-cloud-management.git
    cd multi-cloud-manager
    ```
 
