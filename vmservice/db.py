@@ -9,21 +9,30 @@ from psycopg2 import sql
 
 from config import DATABASE_CONFIG
 
+# Load environment variables
 load_dotenv()
-ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY').encode()  # Store this securely
-cipher = Fernet(ENCRYPTION_KEY)
+
+# Load encryption key for Fernet encryption and decode the JWT secret key
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY').encode()  # Store the encryption key securely
+cipher = Fernet(ENCRYPTION_KEY)  # Initialize cipher for encryption/decryption using Fernet
 encoded_key = os.getenv('SECURITY_JWT_SECRET_KEY')
-SECRET_KEY = base64.b64decode(encoded_key)
+SECRET_KEY = base64.b64decode(encoded_key)  # Decode the base64-encoded JWT secret key
+
+# Setup logging configuration for the module
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def create_tables():
+    """
+    Function to create the necessary database tables if they do not exist.
+    The tables include users, aws_cloud_accounts, gcp_accounts, and azure_accounts.
+    """
     connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        # List of table creation queries
+        # List of SQL queries to create the required tables
         table_creation_queries = [
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -68,11 +77,11 @@ def create_tables():
             """
         ]
 
-        # Execute each table creation query
+        # Execute all table creation queries
         for query in table_creation_queries:
             cursor.execute(query)
 
-        # Commit the changes
+        # Commit the transaction to apply changes
         connection.commit()
         logging.info("Tables created successfully.")
 
@@ -84,8 +93,11 @@ def create_tables():
         if connection:
             connection.close()
 
-
 def get_db_connection():
+    """
+    Establish a connection to the PostgreSQL database using the configuration
+    from the DATABASE_CONFIG dictionary.
+    """
     return psycopg2.connect(
         host=DATABASE_CONFIG['host'],
         user=DATABASE_CONFIG['user'],
@@ -93,8 +105,11 @@ def get_db_connection():
         database=DATABASE_CONFIG['database']
     )
 
-
 def get_aws_credentials():
+    """
+    Retrieve AWS credentials (access_key_id, secret_access_key, and region)
+    from the aws_cloud_accounts table.
+    """
     connection = None
     try:
         connection = get_db_connection()
@@ -116,33 +131,39 @@ def get_aws_credentials():
         if connection:
             connection.close()
 
-
 def add_user_to_db(username, email):
+    """
+    Add a new user with the provided username and email to the users table.
+    """
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            # Insert user into the User table
+            # Insert the new user into the users table
             cursor.execute(
                 sql.SQL("INSERT INTO users (username, email) VALUES (%s, %s) RETURNING user_id"),
                 (username, email)
             )
-            user_id = cursor.fetchone()[0]
+            user_id = cursor.fetchone()[0]  # Retrieve the new user's ID
             connection.commit()
             logging.info(f"User added with ID: {user_id}")
     except Exception as e:
         logging.error(f"Error adding user to DB: {e}")
-        connection.rollback()
+        connection.rollback()  # Rollback in case of error
     finally:
         connection.close()
 
-
 def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key, region):
+    """
+    Encrypt AWS credentials and store them in the aws_cloud_accounts table.
+    """
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
+            # Encrypt the access key ID and secret access key using Fernet cipher
             encrypted_access_key_id = cipher.encrypt(access_key_id.encode()).decode()
             encrypted_secret_access_key = cipher.encrypt(secret_access_key.encode()).decode()
 
+            # Insert the encrypted credentials into the aws_cloud_accounts table
             cursor.execute(
                 sql.SQL(
                     "INSERT INTO aws_cloud_accounts (user_id, access_key_id, secret_access_key, region) VALUES (%s, %s, %s, %s)"),
@@ -156,8 +177,10 @@ def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key,
     finally:
         connection.close()
 
-
 def aws_account_exists(user_id, access_key_id):
+    """
+    Check if an AWS account with the provided access_key_id already exists for the given user.
+    """
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
@@ -168,6 +191,7 @@ def aws_account_exists(user_id, access_key_id):
             rows = cursor.fetchall()
 
             for row in rows:
+                # Decrypt each stored access_key_id for comparison
                 decrypted_access_key_id = cipher.decrypt(row[0].encode()).decode()
                 if decrypted_access_key_id == access_key_id:
                     logging.info(f"AWS account with user_id {user_id} exists.")
@@ -182,8 +206,10 @@ def aws_account_exists(user_id, access_key_id):
     finally:
         connection.close()
 
-
 def get_username_from_token(token):
+    """
+    Extract the username (or user identifier) from the JWT token.
+    """
     logging.info(f"Loaded and decoded SECRET_KEY: {SECRET_KEY}")  # For debugging; remove in production
     if not token:
         logging.error("No token provided")
@@ -203,8 +229,10 @@ def get_username_from_token(token):
         logging.error(f"Invalid token: {e}")
         return None
 
-
 def get_user_id_from_username(username):
+    """
+    Retrieve the user ID based on the username from the users table.
+    """
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
