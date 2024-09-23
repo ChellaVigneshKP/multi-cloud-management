@@ -1,4 +1,0 @@
-FROM wurstmeister/kafka:2.13-2.8.1
-LABEL authors="Chella Vignesh K P"
-ENV KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-ENV KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
