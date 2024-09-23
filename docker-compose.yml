@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres-auth:
     image: postgres:latest
@@ -132,7 +130,7 @@ services:
     build:
       context: ./vmservice
     ports:
-      - "5000:5000"
+      - "5000"
     env_file:
       - ./vmservice/.env
     environment:

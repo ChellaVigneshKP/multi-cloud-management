@@ -1,6 +1,7 @@
 import logging
 import os
 
+from botocore.config import Config
 from flask import jsonify, request
 from dotenv import load_dotenv
 from aws_account import validate_aws_credentials
@@ -19,11 +20,14 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
 
-ec2_client = boto3.client(
+session = boto3.Session()
+config = Config(max_pool_connections=50)
+ec2_client = session.client(
     'ec2',
     aws_access_key_id=AWS_ACCESS_KEY_ID,
     aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_DEFAULT_REGION
+    region_name=AWS_DEFAULT_REGION,
+    config=config
 )
 
 
