@@ -8,6 +8,9 @@ Multi-cloud Manager is a microservice-based application that enables users to ma
 ### Prerequisites
 - Docker and Docker Compose installed on your machine.
 
+### Prerequisites
+![architecture](Archi2.png)
+
 ### Getting Started
 1. Clone the repository:
    ```bash
