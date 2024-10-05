@@ -22,6 +22,7 @@ SECRET_KEY = base64.b64decode(encoded_key)  # Decode the base64-encoded JWT secr
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def create_tables():
     """
     Function to create the necessary database tables if they do not exist.
@@ -93,6 +94,7 @@ def create_tables():
         if connection:
             connection.close()
 
+
 def get_db_connection():
     """
     Establish a connection to the PostgreSQL database using the configuration
@@ -104,6 +106,7 @@ def get_db_connection():
         password=DATABASE_CONFIG['password'],
         database=DATABASE_CONFIG['database']
     )
+
 
 def get_aws_credentials():
     """
@@ -131,6 +134,7 @@ def get_aws_credentials():
         if connection:
             connection.close()
 
+
 def add_user_to_db(username, email):
     """
     Add a new user with the provided username and email to the users table.
@@ -151,6 +155,7 @@ def add_user_to_db(username, email):
         connection.rollback()  # Rollback in case of error
     finally:
         connection.close()
+
 
 def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key, region):
     """
@@ -176,6 +181,7 @@ def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key,
         connection.rollback()
     finally:
         connection.close()
+
 
 def aws_account_exists(user_id, access_key_id):
     """
@@ -206,28 +212,42 @@ def aws_account_exists(user_id, access_key_id):
     finally:
         connection.close()
 
+
 def get_username_from_token(token):
     """
     Extract the username (or user identifier) from the JWT token.
     """
-    logging.info(f"Loaded and decoded SECRET_KEY: {SECRET_KEY}")  # For debugging; remove in production
     if not token:
         logging.error("No token provided")
         return None
 
+    # Ensure token is in the format "Bearer <token>"
+    if not token.startswith("Bearer "):
+        logging.error("Invalid token format")
+        return None
     try:
-        logging.info(f"Token received: {token}")
+        # Extract the token part after "Bearer "
+        token = token.split(" ")[1]
 
-        # Decode the token using the decoded secret key and HS256 algorithm
-        payload = jwt.decode(token.split(" ")[1], SECRET_KEY, algorithms=["HS256"])
-        logging.info(f"Decoded payload: {payload}")
-        return payload['sub']  # Adjust according to your token structure
+        # Decode the token using the SECRET_KEY and specified algorithm
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+
+        # Optionally, log the fact that decoding was successful
+        logging.info("Token decoded successfully")
+
+        # Return the username or user identifier from the payload
+        return payload.get('sub')  # Adjust according to your token structure
+
     except jwt.ExpiredSignatureError:
-        logging.error("Token has expired")
+        logging.warning("Token has expired")
         return None
     except jwt.InvalidTokenError as e:
-        logging.error(f"Invalid token: {e}")
+        logging.warning(f"Invalid token: {e}")
         return None
+    except Exception as e:
+        logging.error(f"An error occurred while decoding token: {e}")
+        return None
+
 
 def get_user_id_from_username(username):
     """
@@ -282,8 +302,9 @@ def get_cloud_accounts_by_user(user_id):
             azure_accounts = cursor.fetchall()
 
             # Combine all accounts into a single list
-            all_accounts = decrypted_aws_accounts + [{'cloud_name': row[0], 'project_id': row[1]} for row in gcp_accounts] \
-                + [{'cloud_name': row[0], 'client_id': row[1]} for row in azure_accounts]
+            all_accounts = decrypted_aws_accounts + [{'cloud_name': row[0], 'project_id': row[1]} for row in
+                                                     gcp_accounts] \
+                           + [{'cloud_name': row[0], 'client_id': row[1]} for row in azure_accounts]
 
             return all_accounts
 

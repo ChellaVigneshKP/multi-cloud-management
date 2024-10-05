@@ -62,6 +62,7 @@
 
 ### VS Code
 /backend/**/.vscode/
+/backend/**/key/
 
 # --- API Gateway ---
 /backend/**/.env

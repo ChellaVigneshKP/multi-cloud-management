@@ -1,6 +1,6 @@
 package com.multicloud.auth.config;
 
-import com.multicloud.auth.service.JwtService;
+import com.multicloud.auth.service.JweService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,72 +18,61 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 
-@Component  // Indicates that this class is a Spring component
+@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final HandlerExceptionResolver handlerExceptionResolver;  // To handle exceptions
 
-    private final JwtService jwtService;  // Service for JWT operations
-    private final UserDetailsService userDetailsService;  // Service for loading user details
+    private final HandlerExceptionResolver handlerExceptionResolver;
+    private final JweService jweService;
+    private final UserDetailsService userDetailsService;
 
     public JwtAuthenticationFilter(
-            JwtService jwtService,
+            JweService jweService,
             UserDetailsService userDetailsService,
             HandlerExceptionResolver handlerExceptionResolver
     ) {
-        this.jwtService = jwtService;
+        this.jweService = jweService;
         this.userDetailsService = userDetailsService;
         this.handlerExceptionResolver = handlerExceptionResolver;
     }
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request,  // HTTP request
-            @NonNull HttpServletResponse response, // HTTP response
-            @NonNull FilterChain filterChain // Filter chain for processing requests
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        // Get the Authorization header from the request
         final String authHeader = request.getHeader("Authorization");
 
-        // Check if the header is present and starts with "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);  // If not, continue the filter chain
+            filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            // Extract the JWT token from the header
-            final String jwt = authHeader.substring(7);  // Remove "Bearer " prefix
-            final String userEmail = jwtService.extractUsername(jwt);  // Extract username from token
+            final String token = authHeader.substring(7);
+            final String username = jweService.extractUsername(token);
 
-            // Get the current authentication from the Security context
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            // If userEmail is present and no authentication exists
-            if (userEmail != null && authentication == null) {
-                // Load user details from the UserDetailsService
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            if (username != null && authentication == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-                // Validate the token
-                if (jwtService.isTokenValid(jwt, userDetails)) {
-                    // Create authentication token for the user
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()  // Set the user's authorities
-                    );
+                if (jweService.isTokenValid(token, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
 
-                    // Set the request details in the authentication token
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    // Set the authentication in the Security context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
 
-            // Continue the filter chain
             filterChain.doFilter(request, response);
-        } catch (Exception exception) {
-            // Handle any exceptions that occur during filtering
-            handlerExceptionResolver.resolveException(request, response, null, exception);
+        } catch (Exception e) {
+            handlerExceptionResolver.resolveException(request, response, null, e);
         }
     }
 }

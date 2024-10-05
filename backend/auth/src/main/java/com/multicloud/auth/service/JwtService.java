@@ -1,15 +1,15 @@
 package com.multicloud.auth.service;
 
+import com.multicloud.auth.model.User;
 import io.jsonwebtoken.Claims;  // Represents the claims contained in a JWT
 import io.jsonwebtoken.Jwts;  // Main class for creating and parsing JWTs
-import io.jsonwebtoken.SignatureAlgorithm;  // Enum for specifying the signing algorithm
 import io.jsonwebtoken.io.Decoders;  // Utility for decoding base64
 import io.jsonwebtoken.security.Keys;  // Utility for generating cryptographic keys
-import java.security.Key;  // Represents a cryptographic key
 import org.springframework.beans.factory.annotation.Value;  // For injecting configuration values
 import org.springframework.security.core.userdetails.UserDetails;  // Represents user details
 import org.springframework.stereotype.Service;  // Indicates that this class is a service component
 
+import javax.crypto.SecretKey;
 import java.util.Date;  // Represents date and time
 import java.util.HashMap;  // HashMap for storing claims
 import java.util.Map;  // General map interface
@@ -36,7 +36,12 @@ public class JwtService {
 
     // Generates a JWT token based on user details
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        Map<String,Object> extraClaims = new HashMap<>();
+        if(userDetails instanceof User user){
+            extraClaims.put("emailId",user.getEmail());
+            extraClaims.put("userId",user.getId());
+        }
+        return generateToken(extraClaims, userDetails);
     }
 
     // Generates a JWT token with extra claims
@@ -57,11 +62,11 @@ public class JwtService {
     ) {
         return Jwts
                 .builder()
-                .setClaims(extraClaims)  // Sets custom claims
-                .setSubject(userDetails.getUsername())  // Sets the subject (username)
-                .setIssuedAt(new Date(System.currentTimeMillis()))  // Sets the issued time
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))  // Sets the expiration time
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)  // Signs the token
+                .claims(extraClaims)  // Sets custom claims
+                .subject(userDetails.getUsername()) // Sets the subject (username)
+                .issuedAt(new Date(System.currentTimeMillis()))  // Sets the issued time
+                .expiration(new Date(System.currentTimeMillis() + expiration))  // Sets the expiration time
+                .signWith(getSignInKey(), Jwts.SIG.HS256)  // Signs the token
                 .compact();  // Builds the token
     }
 
@@ -85,15 +90,15 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parser()
-                .setSigningKey(getSignInKey())  // Sets the signing key
+                .verifyWith(getSignInKey())  // Sets the signing key
                 .build()
-                .parseClaimsJws(token)  // Parses the token
-                .getBody();  // Retrieves the claims
+                .parseSignedClaims(token)  // Parses the token
+                .getPayload();  // Retrieves the claims
     }
 
     // Retrieves the signing key used for signing the token
-    private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);  // Decodes the base64 secret key
-        return Keys.hmacShaKeyFor(keyBytes);  // Generates a signing key
+    private SecretKey getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
