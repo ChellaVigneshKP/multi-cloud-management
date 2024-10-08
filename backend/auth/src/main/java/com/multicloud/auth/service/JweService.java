@@ -40,7 +40,6 @@ public class JweService {
 
     @Value("${security.jwt.private-key-path}")
     private String privateKeyPath;
-
     private final ResourceLoader resourceLoader;
 
     public JweService(ResourceLoader resourceLoader) {
@@ -121,7 +120,7 @@ public class JweService {
         } catch (ParseException | JOSEException e) {
             throw new JweDecryptionException("Error while extracting claims from JWE token", e);
         } catch (PrivateKeyLoadingException e) {
-            throw new JweDecryptionException("Error loading private key", e);
+            throw new JweDecryptionException("Error loading private key in extracting claims", e);
         }
     }
 

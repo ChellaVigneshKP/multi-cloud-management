@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from aws_account import validate_aws_credentials
 from aws_client import list_instances_all_regions, get_ec2_client
 from db import get_aws_credentials, encrypt_and_store_aws_credentials, get_user_id_from_username, \
-    get_username_from_token, get_cloud_accounts_by_user, aws_account_exists, decrypt_aws_credentials, \
+    get_cloud_accounts_by_user, aws_account_exists, decrypt_aws_credentials, \
     get_all_cloud_accounts_by_user
 import boto3
 
@@ -87,10 +87,15 @@ def setup_routes(app):
     # Route to add a new AWS account for the user
     @app.route('/vm/aws/addaccount', methods=['POST'])
     def add_aws_account():
-        data = request.json  # Get request data
-        username = get_username_from_token(request.headers['Authorization'])  # Extract username from token
-        logger.info(f"Username from Token: {username}")
-        user_id = get_user_id_from_username(username)  # Get user ID based on username
+        data = request.json
+        username = request.headers.get('X-User-Name')
+        if not username:
+            return jsonify({"message": "User not authenticated"}), 401
+        logger.info(f"Username from Header: {username}")
+
+        user_id = get_user_id_from_username(username)
+        if not user_id:
+            return jsonify({"message": "User not found"}), 404
         logger.info(f"UserId with Username: {user_id}")
 
         access_key_id = data['access_key_id']
@@ -109,20 +114,17 @@ def setup_routes(app):
         else:
             return jsonify({"message": "Invalid AWS credentials"}), 400  # Return error if credentials are invalid
 
-    # Route to get the current user's username from the token
+    # Route to get the current user's username from the headers
     @app.route('/vm/user', methods=['GET'])
     def get_user_name():
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({"message": "Token is missing!"}), 401  # Return error if token is missing
+        username = request.headers.get('X-User-Name')
+        if not username:
+            return jsonify({"message": "User not authenticated"}), 401
+        logger.info(f"Username from Header: {username}")
 
-        username = get_username_from_token(token)
-        if username is None:
-            logger.info("Username from Token: None")
-            return jsonify({"message": "Invalid or expired token!"}), 401  # Return error if token is invalid
-
-        logger.info(f"Username from Token: {username}")
-        user_id = get_user_id_from_username(username)  # Get user ID based on username
+        user_id = get_user_id_from_username(username)
+        if not user_id:
+            return jsonify({"message": "User not found!"}), 404
         logger.info(f"UserId with Username: {user_id}")
 
         return jsonify({"username": username, "user_id": user_id}), 200  # Return the username and user ID
@@ -130,16 +132,15 @@ def setup_routes(app):
     # Route to get all cloud accounts linked to the user
     @app.route('/vm/cloudaccounts', methods=['GET'])
     def get_cloud_accounts():
-        token = request.headers.get('Authorization')
-        username = get_username_from_token(token)  # Get the username from the token
-        if username is None:
-            return jsonify({"message": "Invalid or expired token!"}), 401  # Return error if token is invalid
+        username = request.headers.get('X-User-Name')
+        if not username:
+            return jsonify({"message": "User not authenticated"}), 401
 
-        user_id = get_user_id_from_username(username)  # Get user ID based on username
+        user_id = get_user_id_from_username(username)
         if not user_id:
-            return jsonify({"message": "User not found!"}), 404  # Return error if user not found
+            return jsonify({"message": "User not found!"}), 404
 
-        accounts = get_cloud_accounts_by_user(user_id)  # Fetch cloud accounts for the user
+        accounts = get_cloud_accounts_by_user(user_id)
         if accounts is None:
             return jsonify({"message": "Error fetching cloud accounts"}), 500  # Handle errors
 
@@ -148,11 +149,15 @@ def setup_routes(app):
     # Route to list all VMs across multiple AWS accounts linked to the user
     @app.route('/vm/aws/listvms', methods=['GET'])
     def list_vms():
-        token = request.headers.get('Authorization')
-        username = get_username_from_token(token)  # Get the username from the token
-        user_id = get_user_id_from_username(username)  # Get user ID based on username
+        username = request.headers.get('X-User-Name')
+        if not username:
+            return jsonify({"message": "User not authenticated"}), 401
 
-        accounts = get_all_cloud_accounts_by_user(user_id)  # Fetch all cloud accounts for the user
+        user_id = get_user_id_from_username(username)
+        if not user_id:
+            return jsonify({"message": "User not found!"}), 404
+
+        accounts = get_all_cloud_accounts_by_user(user_id)
         if accounts is None:
             return jsonify({"message": "Error fetching AWS accounts"}), 500  # Handle errors
 
@@ -190,7 +195,6 @@ def setup_routes(app):
                             'securityGroup': instance['SecurityGroups'][0]['GroupName'] if instance[
                                 'SecurityGroups'] else 'N/A',
                             'platform': instance.get('Platform', 'Linux'),
-                            # Default to 'Linux' if platform info is not available
                             'state': instance['State']['Name'],
                         }
                         all_instances.append(instance_info)  # Add instance details to the list

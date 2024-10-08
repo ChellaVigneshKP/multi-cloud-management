@@ -9,10 +9,10 @@ def init_eureka(app):
         app: The Flask application instance to which this service belongs.
     """
     # Initialize Eureka client with server URL, application name, and instance details
-    eureka_client.init(eureka_server="http://service-discovery:8761/eureka",
-                       app_name="vm-service",
+    eureka_client.init(eureka_server="http://localhost:8761/eureka",
+                       app_name="VM-SERVICE",
                        instance_port=5000,
-                       instance_host="vm-service")
+                       instance_host="localhost")
     logging.info("Eureka initialized.")  # Log successful initialization
 
 def cleanup_eureka():

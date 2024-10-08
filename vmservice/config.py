@@ -19,7 +19,3 @@ KAFKA_CONFIG = {
     'bootstrap_servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS'), # Kafka server address (e.g., kafka:9092)
     'topic': os.getenv('KAFKA_TOPIC')                          # Kafka topic to be used (e.g., user-registration)
 }
-
-# List of AWS regions supported by the application
-# These regions are predefined in the application and can be used to manage resources in specific AWS regions.
-AWS_REGIONS = ['us-east-1', 'us-west-1', 'us-west-2', 'eu-central-1', 'ap-south-1']
