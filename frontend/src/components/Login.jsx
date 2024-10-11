@@ -78,7 +78,7 @@ export default function SignInSide() {
 
     const formData = { email, password };
     axios.defaults.withCredentials = true;
-    axios.post('http://localhost:6060/auth/login', formData)
+    axios.post('http://localhost:6061/auth/login', formData)
       .then(res => {
           Cookies.set('apiToken', res.data.token, { expires: 1, secure: true });
           setSuccess('Login successful!');

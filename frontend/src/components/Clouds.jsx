@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { Box, Button, TextField, MenuItem, Typography, Paper, useMediaQuery } from '@mui/material';
+import { Box, Button, TextField, MenuItem, Typography, Paper, useMediaQuery, IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import DeleteIcon from '@mui/icons-material/Delete';
 import Layout from './Layout';
 
 // Function to fetch logos
 const getCloudLogo = (provider) => {
   switch (provider) {
     case 'AWS':
-      return '/images/aws-logo.png'; // Replace with actual AWS logo URL
+      return '/images/aws-logo.png';
     case 'GCP':
-      return '/images/gcp-logo.png'; // Replace with actual GCP logo URL
+      return '/images/gcp-logo.png';
     case 'Azure':
-      return '/images/azure-logo.png'; // Replace with actual Azure logo URL
+      return '/images/azure-logo.png';
     default:
       return '';
   }
@@ -41,7 +42,7 @@ const Clouds = () => {
     try {
       const response = await axios.get('http://localhost:6061/vm/cloudaccounts', {
         headers: {
-          'Authorization': `Bearer ${apiToken}`,
+          Authorization: `Bearer ${apiToken}`,
         },
       });
       setCloudAccounts(response.data);
@@ -62,12 +63,12 @@ const Clouds = () => {
           Authorization: `Bearer ${apiToken}`,
         },
       });
-      // const response = await axios.get('http://localhost:6061/vm/aws/regions');
       setRegions(response.data.regions);
     } catch (error) {
       console.error('Error fetching AWS regions:', error);
     }
   };
+
   // Fetch cloud accounts when component mounts
   useEffect(() => {
     fetchCloudAccounts();
@@ -125,6 +126,32 @@ const Clouds = () => {
     }
   };
 
+  // Updated handleDelete to form API like /cloudaccounts/aws/2
+  const handleDelete = async (accountId, cloudName) => {
+    try {
+      const apiToken = Cookies.get('apiToken');
+      if (!apiToken) {
+        console.error('API Token is missing');
+        return;
+      }
+
+      // Make the API call with cloud provider and account id
+      await axios.delete(`http://localhost:6061/vm/cloudaccounts/${cloudName.toLowerCase()}/${accountId}`, {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+        },
+      });
+
+      // Refresh the list after deleting
+      fetchCloudAccounts();
+      setSuccessMessage('Cloud account deleted successfully');
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage('Failed to delete cloud account');
+      setSuccessMessage('');
+    }
+  };
+
   const handleAddClick = () => {
     setShowForm(true);
     setErrorMessage(''); // Reset error message
@@ -155,6 +182,7 @@ const Clouds = () => {
                   p: 2,
                   textAlign: 'center',
                   wordWrap: 'break-word',
+                  position: 'relative',
                 }}
               >
                 <img src={getCloudLogo(account.cloud_name)} alt={account.cloud_name} style={{ height: 50 }} />
@@ -166,6 +194,15 @@ const Clouds = () => {
                 )}
                 {account.project_id && <Typography>Project ID: {account.project_id}</Typography>}
                 {account.client_id && <Typography>Client ID: {account.client_id}</Typography>}
+
+                {/* Delete Button */}
+                <IconButton
+                  color="error"
+                  sx={{ position: 'absolute', bottom: 8, right: 8 }}
+                  onClick={() => handleDelete(account.id, account.cloud_name)} // Pass both id and cloud_name
+                >
+                  <DeleteIcon />
+                </IconButton>
               </Paper>
             ))
           ) : (

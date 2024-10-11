@@ -22,11 +22,30 @@ SECRET_KEY = base64.b64decode(encoded_key)  # Decode the base64-encoded JWT secr
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+AWS_REGIONS = [
+    ("ap-south-1", "Asia Pacific (Mumbai)"),
+    ("eu-north-1", "EU (Stockholm)"),
+    ("eu-west-3", "EU (Paris)"),
+    ("eu-west-2", "EU (London)"),
+    ("eu-west-1", "EU (Ireland)"),
+    ("ap-northeast-3", "Asia Pacific (Osaka-Local)"),
+    ("ap-northeast-2", "Asia Pacific (Seoul)"),
+    ("ap-northeast-1", "Asia Pacific (Tokyo)"),
+    ("ca-central-1", "Canada (Central)"),
+    ("sa-east-1", "South America (Sao Paulo)"),
+    ("ap-southeast-1", "Asia Pacific (Singapore)"),
+    ("ap-southeast-2", "Asia Pacific (Sydney)"),
+    ("eu-central-1", "EU (Frankfurt)"),
+    ("us-east-1", "US East (N. Virginia)"),
+    ("us-east-2", "US East (Ohio)"),
+    ("us-west-1", "US West (N. California)"),
+    ("us-west-2", "US West (Oregon)")
+]
 
 def create_tables():
     """
     Function to create the necessary database tables if they do not exist.
-    The tables include users, aws_cloud_accounts, gcp_accounts, and azure_accounts.
+    The tables include users, aws_cloud_accounts, gcp_accounts, azure_accounts, and aws_regions.
     """
     connection = None
     try:
@@ -75,6 +94,13 @@ def create_tables():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS aws_regions (
+                region_id SERIAL PRIMARY KEY,
+                region_name VARCHAR(100) UNIQUE NOT NULL,
+                region_description VARCHAR(255)
+            );
             """
         ]
 
@@ -86,6 +112,9 @@ def create_tables():
         connection.commit()
         logging.info("Tables created successfully.")
 
+        # Initialize AWS regions after creating the tables
+        initialize_aws_regions(connection)
+
     except Exception as e:
         logging.error(f"Error creating tables: {e}")
     finally:
@@ -93,7 +122,6 @@ def create_tables():
             cursor.close()
         if connection:
             connection.close()
-
 
 def get_db_connection():
     """
@@ -106,6 +134,29 @@ def get_db_connection():
         password=DATABASE_CONFIG['password'],
         database=DATABASE_CONFIG['database']
     )
+
+def initialize_aws_regions(connection):
+    """
+    Function to initialize AWS regions in the `aws_regions` table.
+    """
+    try:
+        cursor = connection.cursor()
+
+        # Insert regions into the aws_regions table if they don't already exist
+        insert_query = """
+        INSERT INTO aws_regions (region_name, region_description)
+        VALUES (%s, %s) ON CONFLICT (region_name) DO NOTHING;
+        """
+        cursor.executemany(insert_query, AWS_REGIONS)
+
+        # Commit the transaction
+        connection.commit()
+        logger.info("AWS regions initialized successfully.")
+    except Exception as e:
+        logging.error(f"Error initializing AWS regions: {e}")
+    finally:
+        if cursor:
+            cursor.close()
 
 
 def get_aws_credentials():

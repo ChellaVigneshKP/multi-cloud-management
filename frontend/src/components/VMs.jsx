@@ -22,7 +22,7 @@ const VMs = () => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:6061/vm/aws/listvms', {
+      const response = await fetch('http://localhost:6061/vm/aws/ec2', {
         headers: {
           'Authorization': `Bearer ${apiToken}`,
         },

@@ -42,7 +42,7 @@ export default function Verify() {
 
     setLoading(true); // Set loading to true when the request starts
 
-    axios.post('http://localhost:6060/auth/verify', { email, verificationCode })
+    axios.post('http://localhost:6061/auth/verify', { email, verificationCode })
       .then(res => {
         setMessage('Verification successful! Redirecting to login...');
         setError('');
@@ -72,7 +72,7 @@ export default function Verify() {
   const handleResendCode = () => {
     setResending(true); // Set resending to true when the request starts
   
-    axios.post('http://localhost:6060/auth/resend', { email }) // Send email in the request body
+    axios.post('http://localhost:6061/auth/resend', { email }) // Send email in the request body
       .then(() => {
         setMessage('Verification code resent. Please check your email.');
         setError('');

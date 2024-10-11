@@ -13,10 +13,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -24,7 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final JweService jweService;
     private final UserDetailsService userDetailsService;
-
+    private final PathMatcher pathMatcher = new AntPathMatcher();
+    private final List<String> excludedPaths = Arrays.asList("/auth/validate-token","/auth/userinfo"); // Add any other paths to exclude
     public JwtAuthenticationFilter(
             JweService jweService,
             UserDetailsService userDetailsService,
@@ -33,6 +38,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jweService = jweService;
         this.userDetailsService = userDetailsService;
         this.handlerExceptionResolver = handlerExceptionResolver;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        for (String pattern : excludedPaths) {
+            if (pathMatcher.match(pattern, path)) {
+                return true; // Skip filtering for this path
+            }
+        }
+        return false; // Apply filter for other paths
     }
 
     @Override
@@ -51,12 +67,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             final String token = authHeader.substring(7);
             final String username = jweService.extractUsername(token);
-
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
             if (username != null && authentication == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
                 if (jweService.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
@@ -64,14 +77,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     null,
                                     userDetails.getAuthorities()
                             );
-
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-
             filterChain.doFilter(request, response);
         } catch (Exception e) {
+            logger.error("Error in JwtAuthenticationFilter", e);
             handlerExceptionResolver.resolveException(request, response, null, e);
         }
     }

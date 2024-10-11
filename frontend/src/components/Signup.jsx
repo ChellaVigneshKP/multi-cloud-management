@@ -91,7 +91,7 @@ export default function SignUpSide() {
 
     setLoading(true); // Set loading to true when the request starts
 
-    axios.post('http://localhost:6060/auth/signup', formData)
+    axios.post('http://localhost:6061/auth/signup', formData)
       .then(res => {
         console.log(res);
         setSuccess('Sign Up successful! Please verify your email.');

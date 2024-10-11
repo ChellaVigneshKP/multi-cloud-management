@@ -19,6 +19,7 @@ import com.multicloud.auth.responses.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @RequestMapping("/auth")  // Base URL for authentication-related endpoints
@@ -117,4 +118,22 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid or malformed token"));  // Handle token errors
         }
     }
+
+    @GetMapping("/userinfo")
+    public ResponseEntity<?> getUserInfo(
+            @RequestHeader("X-User-Name") String username,
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("X-User-Id") String userId) {
+        if (username == null || email == null || userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("User information is missing in the request headers"));
+        }
+        Map<String, String> userInfo = new HashMap<>();
+        userInfo.put("username", username);
+        userInfo.put("email", email);
+        userInfo.put("userId", userId);
+        logger.info("UserInfo requested for User ID: {}", userId);
+        return ResponseEntity.ok(userInfo);
+    }
+
 }

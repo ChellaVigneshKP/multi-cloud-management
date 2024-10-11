@@ -25,7 +25,7 @@ public class KafkaProducerConfig {
     public ProducerFactory<String, Map<String, String>> producerFactory() {
         // Create a map to hold configuration properties for the Kafka producer
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9093");  // Set the Kafka broker address
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");  // Set the Kafka broker address
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);  // Set the key serializer
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);  // Set the value serializer
         return new DefaultKafkaProducerFactory<>(configProps);  // Create and return the ProducerFactory
