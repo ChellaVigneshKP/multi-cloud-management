@@ -1,3 +1,5 @@
+// src/components/Layout.js
+
 import React, { useState, useEffect } from 'react';
 import {
   AppBar,
@@ -57,6 +59,7 @@ const Layout = ({ children }) => {
         const apiToken = Cookies.get('apiToken');
         if (!apiToken) {
           console.error('API Token is missing');
+          navigate('/login'); // Redirect to login if token is missing
           return;
         }
         const response = await api.get('/auth/userinfo', {
@@ -70,11 +73,12 @@ const Layout = ({ children }) => {
         setAvatarLetter(username.charAt(0).toUpperCase());
       } catch (error) {
         console.error('Error fetching user data:', error);
+        navigate('/login'); // Redirect to login on error
       }
     };
 
     fetchUserData();
-  }, []);
+  }, [navigate]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -113,6 +117,7 @@ const Layout = ({ children }) => {
         sx={{
           zIndex: theme.zIndex.drawer + 1,
         }}
+        role="banner"
       >
         <Toolbar>
           {/* Menu Button */}
@@ -122,12 +127,19 @@ const Layout = ({ children }) => {
             aria-label="open drawer"
             onClick={handleDrawerToggle}
             sx={{ mr: 2 }}
+            size="large"
           >
             <MenuIcon />
           </IconButton>
 
           {/* Logo and Title */}
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ flexGrow: 1 }}
+            aria-label="Multi-Cloud Management Dashboard"
+          >
             <img
               src="/images/logo.png"
               alt="Logo"
@@ -136,13 +148,14 @@ const Layout = ({ children }) => {
             Multi-Cloud Management
           </Typography>
 
-          {/* Top Navigation Links */}
+          {/* Top Navigation Links - Visible only on medium and larger screens */}
           <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
             <Button
               color="inherit"
               startIcon={<DashboardIcon />}
               component={Link}
               to="/dashboard"
+              aria-label="Navigate to Dashboard"
             >
               Dashboard
             </Button>
@@ -151,13 +164,19 @@ const Layout = ({ children }) => {
               startIcon={<CloudIcon />}
               component={Link}
               to="/clouds"
+              aria-label="Navigate to Clouds"
             >
               Clouds
             </Button>
           </Box>
 
           {/* Notification and Account Icons */}
-          <IconButton color="inherit" sx={{ ml: 1 }}>
+          <IconButton
+            color="inherit"
+            sx={{ ml: 1 }}
+            aria-label="View Notifications"
+            size="large"
+          >
             <Badge badgeContent={4} color="error">
               <NotificationsIcon />
             </Badge>
@@ -167,8 +186,10 @@ const Layout = ({ children }) => {
             color="inherit"
             onClick={handleMenuClick}
             sx={{ ml: 1 }}
+            aria-label="Open Account Menu"
+            size="large"
           >
-            <Avatar sx={{ bgcolor: theme.palette.secondary.main }}>
+            <Avatar sx={{ bgcolor: theme.palette.secondary.main }} aria-label="User Avatar">
               {avatarLetter}
             </Avatar>
           </IconButton>
@@ -180,12 +201,16 @@ const Layout = ({ children }) => {
         variant="temporary"
         open={drawerOpen}
         onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
         sx={{
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
           },
         }}
+        aria-label="Side Navigation"
       >
         <Toolbar />
         <Box
@@ -195,44 +220,61 @@ const Layout = ({ children }) => {
             height: '100%',
             overflow: 'auto',
           }}
+          role="navigation"
+          aria-label="Main Navigation Links"
         >
           <List>
             <ListItemButton
               component={Link}
               to="/dashboard"
               onClick={handleDrawerToggle}
+              aria-label="Navigate to Dashboard"
             >
-              <DashboardIcon sx={{ mr: 2 }} />
+              <DashboardIcon sx={{ mr: 2 }} aria-hidden="true" />
               <ListItemText primary="Dashboard" />
             </ListItemButton>
             <ListItemButton
               component={Link}
               to="/vms"
               onClick={handleDrawerToggle}
+              aria-label="Navigate to VMs"
             >
-              <DesktopWindowsIcon sx={{ mr: 2 }} />
+              <DesktopWindowsIcon sx={{ mr: 2 }} aria-hidden="true" />
               <ListItemText primary="VMs" />
             </ListItemButton>
             <ListItemButton
               component={Link}
               to="/cost-manager"
               onClick={handleDrawerToggle}
+              aria-label="Navigate to Cost Manager"
             >
-              <AttachMoneyIcon sx={{ mr: 2 }} />
+              <AttachMoneyIcon sx={{ mr: 2 }} aria-hidden="true" />
               <ListItemText primary="Cost Manager" />
             </ListItemButton>
             <ListItemButton
               component={Link}
               to="/alerts"
               onClick={handleDrawerToggle}
+              aria-label="Navigate to Monitoring & Alerts"
             >
-              <NotificationImportantIcon sx={{ mr: 2 }} />
+              <NotificationImportantIcon sx={{ mr: 2 }} aria-hidden="true" />
               <ListItemText primary="Monitoring & Alerts" />
+            </ListItemButton>
+            {/* Clouds button - Visible only on small screens */}
+            <ListItemButton
+              component={Link}
+              to="/clouds"
+              onClick={handleDrawerToggle}
+              sx={{ display: { xs: 'flex', md: 'none' } }}
+              aria-label="Navigate to Clouds"
+            >
+              <CloudIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="Clouds" />
             </ListItemButton>
           </List>
           {/* Spacer to push content to the bottom */}
           <Box sx={{ flexGrow: 1 }} />
-          {/* Copyright Message */}
+          {/* Footer */}
           <Box sx={{ p: 2 }}>
             <Typography variant="body2" color="textSecondary" align="center">
               {'Copyright © '}
@@ -252,10 +294,11 @@ const Layout = ({ children }) => {
         onClose={handleMenuClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        aria-label="Account Menu"
       >
         {/* Enhanced Profile Menu */}
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2 }}>
+          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2 }} aria-hidden="true">
             {avatarLetter}
           </Avatar>
           <Box>
@@ -266,17 +309,17 @@ const Layout = ({ children }) => {
           </Box>
         </Box>
         <Divider />
-        <MenuItem onClick={handleMenuClose}>
-          <PersonIcon sx={{ mr: 1 }} />
+        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Profile">
+          <PersonIcon sx={{ mr: 1 }} aria-hidden="true" />
           Profile
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <SettingsIcon sx={{ mr: 1 }} />
+        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Settings">
+          <SettingsIcon sx={{ mr: 1 }} aria-hidden="true" />
           Settings
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleLogoutClick}>
-          <LogoutIcon sx={{ mr: 1 }} />
+        <MenuItem onClick={handleLogoutClick} aria-label="Logout">
+          <LogoutIcon sx={{ mr: 1 }} aria-hidden="true" />
           Logout
         </MenuItem>
       </Menu>
@@ -287,8 +330,9 @@ const Layout = ({ children }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          mt: 8,
+          mt: 8, // Adjusted for AppBar height
         }}
+        aria-label="Main Content Area"
       >
         {children}
       </Box>
@@ -307,10 +351,10 @@ const Layout = ({ children }) => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleLogoutDialogClose} color="primary">
+          <Button onClick={handleLogoutDialogClose} color="primary" aria-label="Cancel Logout">
             Cancel
           </Button>
-          <Button onClick={handleLogoutConfirm} color="secondary" autoFocus>
+          <Button onClick={handleLogoutConfirm} color="secondary" autoFocus aria-label="Confirm Logout">
             Logout
           </Button>
         </DialogActions>

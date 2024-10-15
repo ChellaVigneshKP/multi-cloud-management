@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Login Alert</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f5; margin: 0; padding: 20px;">
+<div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.1);">
+
+    <!-- Header -->
+    <div style="padding: 30px 20px; text-align: center; background: linear-gradient(135deg, #B45C39, #E2725B);">
+        <img th:src="${logo}" alt="YourApp Logo" style="height: 50px;">
+    </div>
+
+    <!-- Title -->
+    <div style="padding: 20px; text-align: center; color: #333333; font-size: 24px; font-weight: 600;">
+        We've noticed a new login, <span th:text="${username}">Username</span>
+    </div>
+
+    <!-- Subtitle -->
+    <div style="padding: 0 20px 20px 20px; text-align: center; color: #555555; font-size: 16px;">
+        We've noticed a login from a device that you don't usually use.
+    </div>
+
+    <!-- Device Section -->
+    <div style="text-align: center; padding: 30px 20px;">
+        <img th:src="${deviceImagePath}" alt="Device Icon" style="height: 60px;">
+    </div>
+
+    <!-- Device Info -->
+    <div style="padding: 20px; text-align: center; color: #333333; font-size: 16px; font-weight: 500;">
+        <span th:text="${os}">OS</span> · <span th:text="${browser}">Browser</span> · <span th:text="${location}">City, Region</span> · <span th:text="${country}">Country</span>
+    </div>
+
+    <!-- Login Time -->
+    <div style="padding: 10px 20px; text-align: center; color: #777777; font-size: 14px;">
+        <span th:text="${formattedLoginTime}">Login Time</span>
+    </div>
+
+    <!-- Divider -->
+    <div style="padding: 10px 0; text-align: center;">
+        <hr style="border: none; border-top: 1px solid #dddddd; width: 80%;">
+    </div>
+
+    <!-- Body Content -->
+    <div style="padding: 20px 40px; color: #333333; font-size: 16px; line-height: 1.6; text-align: center;">
+        <p>We detected a login from <strong th:text="${os}">OS Device</strong> on <strong th:text="${browser}">Browser</strong> with the IP address: <strong th:text="${clientIp}">IP Address</strong>.</p>
+        <p>If this was you, you can safely ignore this message. If not, please <a th:href="${changePasswordUrl}" style="color: #B45C39; text-decoration: underline;">change your password</a> immediately.</p>
+    </div>
+
+    <!-- Map Section -->
+    <div style="text-align: center; padding: 20px 0;">
+        <img th:src="${mapUrl}" alt="Login Location Map" style="border-radius: 8px; max-width: 80%; height: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    </div>
+
+    <!-- Action Button -->
+    <div style="text-align: center; padding: 20px;">
+        <a th:href="${changePasswordUrl}" style="background-color: #B45C39; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; transition: background-color 0.3s ease;">Change Your Password</a>
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f2f4f7; padding: 20px 40px; color: #777777; font-size: 14px; text-align: center;">
+        <p>If you have any questions, feel free to <a href="mailto:info@chellavignesh.com" style="color: #B45C39; text-decoration: underline;">contact us</a>.</p>
+        <p>&copy; 2024 chellavignesh.com. All rights reserved.</p>
+    </div>
+
+</div>
+</body>
+</html>

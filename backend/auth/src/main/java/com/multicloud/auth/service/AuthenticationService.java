@@ -1,6 +1,5 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.dto.LoginAlertDto;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
@@ -14,7 +13,6 @@ import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,9 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service  // Indicates that this class is a service component
@@ -111,9 +106,7 @@ public class AuthenticationService {
         userRepository.save(user);
         if (isNewIp) {
             logger.info("New IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
-            LoginAlertDto loginAlertDto = new LoginAlertDto(user,clientIp,userAgent);
-//            sendIpChangeAlertEmail(loginAlertDto);
-            asyncEmailService.sendIpChangeAlertEmailAsync(loginAlertDto);
+            asyncEmailService.sendIpChangeAlertEmailAsync(user,clientIp,userAgent);
         }
         return user;  // Return authenticated user
     }
@@ -173,72 +166,8 @@ public class AuthenticationService {
     // Method to send verification email
     private void sendVerificationEmail(User user) {
         String subject = "Account Verification";  // Email subject
-        String verificationCode = "VERIFICATION CODE " + user.getVerificationCode();  // Verification code message
-        String firstName = user.getFirstName();
-        String htmlMessage = "<html>"
-                + "<body style=\"font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;\">"
-                + "<table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"600\" style=\"border-collapse: collapse; background-color: #ffffff;\">"
-                + "<tr>"
-                + "<td align=\"center\" bgcolor=\"#B45C39\" style=\"padding: 40px 0 30px 0; color: #ffffff; font-size: 28px; font-weight: bold;\">"
-                + "Verification Code"
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td bgcolor=\"#ffffff\" style=\"padding: 40px 30px 40px 30px;\">"
-                + "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">"
-                + "<tr>"
-                + "<td style=\"color: #333333; font-size: 18px; padding-bottom: 20px;\">"
-                + "Dear " + firstName + ","
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td style=\"color: #333333; font-size: 16px; padding-bottom: 20px;\">"
-                + "Please enter the following verification code to continue with your registration or account setup:"
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td align=\"center\" style=\"padding: 20px 0;\">"
-                + "<div style=\"background-color: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1);\">"
-                + "<h3 style=\"color: #333;\">Your Verification Code:</h3>"
-                + "<p style=\"font-size: 24px; font-weight: bold; color: #B45C39;\">" + verificationCode + "</p>"
-                + "</div>"
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td style=\"color: #333333; font-size: 16px; padding-bottom: 20px;\">"
-                + "If you did not request this code, please disregard this email."
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td style=\"color: #333333; font-size: 16px; padding-top: 30px;\">"
-                + "Best regards,<br/><strong>KPCV Team</strong>"
-                + "</td>"
-                + "</tr>"
-                + "</table>"
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td bgcolor=\"#B45C39\" style=\"padding: 30px 30px 30px 30px;\">"
-                + "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">"
-                + "<tr>"
-                + "<td style=\"color: #ffffff; font-size: 14px; text-align: center;\">"
-                + "If you have any questions, feel free to <a href=\"mailto:info@chellavignesh.com\" style=\"color: #ffffff; text-decoration: underline;\">contact us</a>."
-                + "</td>"
-                + "</tr>"
-                + "<tr>"
-                + "<td style=\"color: #ffffff; font-size: 14px; text-align: center; padding-top: 10px;\">"
-                + "&copy; 2024 chellavignesh.com. All rights reserved."
-                + "</td>"
-                + "</tr>"
-                + "</table>"
-                + "</td>"
-                + "</tr>"
-                + "</table>"
-                + "</body>"
-                + "</html>";
-
         try {
-            emailService.sendVerificationEmail(user.getEmail(), subject, htmlMessage);  // Send the email
+            emailService.sendVerificationEmail(user.getEmail(), subject, user);  // Send the email
             logger.info("Email sent successfully to mail id '{}'", user.getEmail());
         } catch (MessagingException e) {
             // Handle email sending exception

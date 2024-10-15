@@ -19,6 +19,7 @@ public class RouteValidator {
             "/auth/validate-token", // Endpoint for validating JWT tokens
             "/auth/forgot-password",
             "/auth/reset-password",
+            "/auth/take-action",
             "/auth/v3/**",
             "/auth/swagger-ui/**",
             "/favicon.ico"

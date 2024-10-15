@@ -77,7 +77,6 @@ public class AuthenticationController {
             String jweToken = jweService.generateToken(authenticatedUser);
             LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime());
             logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
-            logger.info("User Agent from Header is: {}", userAgent);
             return ResponseEntity.ok(loginResponse);
         } catch (UsernameNotFoundException e) {
             logger.error("User not found: {}", loginUserDto.getEmail());
@@ -199,16 +198,24 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to email " + request.getEmail() + ". If the email is registered."));
         }
     }
-
+    @Operation(summary = "Request a reset password link", description = "Trigger sending of a password reset link for the given email address.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset link sent successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid email format",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Server error",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/take-action")
-    public ResponseEntity<?> takeaction(@Valid @RequestBody ForgotPasswordRequest request) {
-        logger.info("Received forgot password request for email: {}", request.getEmail());
+    public ResponseEntity<?> takeAction(@Valid @RequestBody ForgotPasswordRequest request) {
+        logger.info("Received Change password request for email: {}", request.getEmail());
         try {
             forgotPasswordService.processForgotPassword(request.getEmail());
-            return ResponseEntity.ok(new SuccessResponse("A reset link has been sent to email " + request.getEmail() + ". If the email is registered."));
+            return ResponseEntity.ok(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
         } catch (IllegalArgumentException e) {
-            logger.error("Error processing mail for Forget Password with Mail Id: {}", request.getEmail());
-            return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to email " + request.getEmail() + ". If the email is registered."));
+            logger.error("Error processing mail for Change Password with Mail Id: {}", request.getEmail());
+            return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
         }
     }
 

@@ -8,20 +8,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class UserAgentParser {
-    // Private constructor to prevent instantiation
     private static final Logger logger = LoggerFactory.getLogger(UserAgentParser.class);
     private UserAgentParser() {
         throw new UnsupportedOperationException("Utility class");
     }
     public static String[] parseUserAgent(String userAgentString) {
         UserAgent userAgent = UserAgent.parseUserAgentString(userAgentString);
-
         Browser browser = userAgent.getBrowser();
         OperatingSystem os = userAgent.getOperatingSystem();
         DeviceType deviceType = os.getDeviceType();
         String browserName = browser.getName() != null ? browser.getName() : "Unknown Browser";
         String osName = os.getName() != null ? os.getName() : "Unknown OS";
         String deviceName = deviceType != null ? deviceType.getName() : "Unknown Device";
+        logger.info("Browser: {}, OS: {}, Device: {}", browserName, osName, deviceName);
         return new String[]{browserName, osName, deviceName};
     }
 }
