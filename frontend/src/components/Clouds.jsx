@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Cookies from 'js-cookie';
 import { Box, Button, TextField, MenuItem, Typography, Paper, useMediaQuery, IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Layout from './Layout';
+import api from '../api';  // Import the centralized API instance
 
 // Function to fetch logos
 const getCloudLogo = (provider) => {
@@ -40,7 +40,7 @@ const Clouds = () => {
       return;
     }
     try {
-      const response = await axios.get('http://localhost:6061/vm/cloudaccounts', {
+      const response = await api.get('/vm/cloudaccounts', {
         headers: {
           Authorization: `Bearer ${apiToken}`,
         },
@@ -58,7 +58,7 @@ const Clouds = () => {
       return;
     }
     try {
-      const response = await axios.get('http://localhost:6061/vm/aws/regions', {
+      const response = await api.get('/vm/aws/regions', {
         headers: {
           Authorization: `Bearer ${apiToken}`,
         },
@@ -101,13 +101,13 @@ const Clouds = () => {
         return;
       }
       if (cloudProvider === 'aws') {
-        endpoint = 'http://localhost:6061/vm/aws/addaccount';
+        endpoint = '/vm/aws/addaccount';
       } else if (cloudProvider === 'gcp') {
-        endpoint = 'http://localhost:6061/vm/gcp/addaccount';
+        endpoint = '/vm/gcp/addaccount';
       } else if (cloudProvider === 'azure') {
-        endpoint = 'http://localhost:6061/vm/azure/addaccount';
+        endpoint = '/vm/azure/addaccount';
       }
-      const response = await axios.post(endpoint, awsData, {
+      const response = await api.post(endpoint, awsData, {
         headers: {
           Authorization: `Bearer ${apiToken}`,
           'Content-Type': 'application/json',
@@ -126,7 +126,6 @@ const Clouds = () => {
     }
   };
 
-  // Updated handleDelete to form API like /cloudaccounts/aws/2
   const handleDelete = async (accountId, cloudName) => {
     try {
       const apiToken = Cookies.get('apiToken');
@@ -136,7 +135,7 @@ const Clouds = () => {
       }
 
       // Make the API call with cloud provider and account id
-      await axios.delete(`http://localhost:6061/vm/cloudaccounts/${cloudName.toLowerCase()}/${accountId}`, {
+      await api.delete(`/vm/cloudaccounts/${cloudName.toLowerCase()}/${accountId}`, {
         headers: {
           Authorization: `Bearer ${apiToken}`,
         },

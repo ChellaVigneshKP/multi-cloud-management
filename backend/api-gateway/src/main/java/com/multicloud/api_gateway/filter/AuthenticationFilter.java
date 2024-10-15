@@ -76,6 +76,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                             .header("X-User-Name", username)
                             .header("X-User-Email", email)
                             .header("X-User-Id", userId)
+                            .header("X-User-IP", ipAddressV4) // Add client IPv4 to headers
+                            .header("X-User-IP-V6", ipAddressV6) // Add client IPv6 to headers
                             .build();
                     // Continue the filter chain with the modified request
                     return chain.filter(exchange.mutate().request(modifiedRequest).build());
@@ -88,8 +90,12 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 String ipAddressV4 = clientIpAddresses[0];
                 String ipAddressV6 = clientIpAddresses[1];
                 logger.info("Request to unsecured path from IPv4: {}, IPv6: {} to Path: {}", ipAddressV4, ipAddressV6, requestPath);
+                ServerHttpRequest modifiedRequest = request.mutate()
+                        .header("X-User-IP", ipAddressV4)  // Add client IPv4
+                        .header("X-User-IP-V6", ipAddressV6)  // Add client IPv6
+                        .build();
+                return chain.filter(exchange.mutate().request(modifiedRequest).build());
             }
-            return chain.filter(exchange);
         };
     }
 

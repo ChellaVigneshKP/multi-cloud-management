@@ -10,10 +10,9 @@ import Grid from '@mui/material/Grid';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
-
+import api from '../api';
 const theme = createTheme({
   palette: {
     primary: {
@@ -91,7 +90,7 @@ export default function SignUpSide() {
 
     setLoading(true); // Set loading to true when the request starts
 
-    axios.post('http://localhost:6061/auth/signup', formData)
+    api.post('/auth/signup', formData)
       .then(res => {
         console.log(res);
         setSuccess('Sign Up successful! Please verify your email.');

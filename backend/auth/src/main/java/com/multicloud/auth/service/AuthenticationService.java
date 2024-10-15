@@ -1,5 +1,6 @@
 package com.multicloud.auth.service;
 
+import com.multicloud.auth.dto.LoginAlertDto;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
@@ -10,8 +11,10 @@ import com.multicloud.auth.exception.UsernameNotFoundException;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.UserRepository;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,10 +22,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Service  // Indicates that this class is a service component
 public class AuthenticationService {
@@ -33,21 +36,25 @@ public class AuthenticationService {
     private final KafkaTemplate<String, Map<String, String>> kafkaTemplate;  // Kafka template for message production
     private static final String USER_REGISTRATION_TOPIC = "user-registration";  // Kafka topic for user registration
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
-
+    private final HttpServletRequest request;
+    private final AsyncEmailService asyncEmailService;
     public AuthenticationService(
             UserRepository userRepository,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
-            KafkaTemplate<String, Map<String, String>> kafkaTemplate
+            KafkaTemplate<String, Map<String, String>> kafkaTemplate,
+            HttpServletRequest request,
+            AsyncEmailService asyncEmailService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.kafkaTemplate = kafkaTemplate;
+        this.request = request;
+        this.asyncEmailService = asyncEmailService;
     }
-
     // Method for user registration
     public User signup(RegisterUserDto input) {
         // Check if the username already exists
@@ -70,7 +77,7 @@ public class AuthenticationService {
     }
 
     // Method for user authentication
-    public User authenticate(LoginUserDto input) {
+    public User authenticate(LoginUserDto input, String userAgent) {
         // Retrieve user by email
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Username not found"));
@@ -88,6 +95,26 @@ public class AuthenticationService {
                 )
         );
 
+        final String UNKNOWN_IP = "Unknown";  // Define a constant for "Unknown"
+        String clientIpv4 = request.getHeader("X-User-IP");
+        String clientIpv6 = request.getHeader("X-User-IP-V6");
+        String clientIp = UNKNOWN_IP;
+        if (!UNKNOWN_IP.equals(clientIpv4)) {
+            clientIp = clientIpv4;  // Prefer IPv4 if it's available and not "Unknown"
+        } else if (!UNKNOWN_IP.equals(clientIpv6)) {
+            clientIp = clientIpv6;  // Fallback to IPv6 if IPv4 is "Unknown"
+        }
+        logger.info("User: {} logged in from Ip Address: {}", user.getUsername(), clientIp);
+        boolean isNewIp = !clientIp.equals(user.getLastLoginIp()) && !"Unknown".equals(user.getLastLoginIp());
+        user.setLastLogin(LocalDateTime.now());
+        user.setLastLoginIp(clientIp);
+        userRepository.save(user);
+        if (isNewIp) {
+            logger.info("New IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
+            LoginAlertDto loginAlertDto = new LoginAlertDto(user,clientIp,userAgent);
+//            sendIpChangeAlertEmail(loginAlertDto);
+            asyncEmailService.sendIpChangeAlertEmailAsync(loginAlertDto);
+        }
         return user;  // Return authenticated user
     }
 
@@ -147,16 +174,66 @@ public class AuthenticationService {
     private void sendVerificationEmail(User user) {
         String subject = "Account Verification";  // Email subject
         String verificationCode = "VERIFICATION CODE " + user.getVerificationCode();  // Verification code message
+        String firstName = user.getFirstName();
         String htmlMessage = "<html>"
-                + "<body style=\"font-family: Arial, sans-serif;\">"
-                + "<div style=\"background-color: #f5f5f5; padding: 20px;\">"
-                + "<h2 style=\"color: #333;\">Welcome to our app!</h2>"
-                + "<p style=\"font-size: 16px;\">Please enter the verification code below to continue:</p>"
-                + "<div style=\"background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);\">"
-                + "<h3 style=\"color: #333;\">Verification Code:</h3>"
-                + "<p style=\"font-size: 18px; font-weight: bold; color: #007bff;\">" + verificationCode + "</p>"
+                + "<body style=\"font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;\">"
+                + "<table align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"600\" style=\"border-collapse: collapse; background-color: #ffffff;\">"
+                + "<tr>"
+                + "<td align=\"center\" bgcolor=\"#B45C39\" style=\"padding: 40px 0 30px 0; color: #ffffff; font-size: 28px; font-weight: bold;\">"
+                + "Verification Code"
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td bgcolor=\"#ffffff\" style=\"padding: 40px 30px 40px 30px;\">"
+                + "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">"
+                + "<tr>"
+                + "<td style=\"color: #333333; font-size: 18px; padding-bottom: 20px;\">"
+                + "Dear " + firstName + ","
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td style=\"color: #333333; font-size: 16px; padding-bottom: 20px;\">"
+                + "Please enter the following verification code to continue with your registration or account setup:"
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td align=\"center\" style=\"padding: 20px 0;\">"
+                + "<div style=\"background-color: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1);\">"
+                + "<h3 style=\"color: #333;\">Your Verification Code:</h3>"
+                + "<p style=\"font-size: 24px; font-weight: bold; color: #B45C39;\">" + verificationCode + "</p>"
                 + "</div>"
-                + "</div>"
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td style=\"color: #333333; font-size: 16px; padding-bottom: 20px;\">"
+                + "If you did not request this code, please disregard this email."
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td style=\"color: #333333; font-size: 16px; padding-top: 30px;\">"
+                + "Best regards,<br/><strong>KPCV Team</strong>"
+                + "</td>"
+                + "</tr>"
+                + "</table>"
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td bgcolor=\"#B45C39\" style=\"padding: 30px 30px 30px 30px;\">"
+                + "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">"
+                + "<tr>"
+                + "<td style=\"color: #ffffff; font-size: 14px; text-align: center;\">"
+                + "If you have any questions, feel free to <a href=\"mailto:info@chellavignesh.com\" style=\"color: #ffffff; text-decoration: underline;\">contact us</a>."
+                + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td style=\"color: #ffffff; font-size: 14px; text-align: center; padding-top: 10px;\">"
+                + "&copy; 2024 chellavignesh.com. All rights reserved."
+                + "</td>"
+                + "</tr>"
+                + "</table>"
+                + "</td>"
+                + "</tr>"
+                + "</table>"
                 + "</body>"
                 + "</html>";
 

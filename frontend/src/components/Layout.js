@@ -37,8 +37,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
-import axios from 'axios'; // Import axios to make API requests
-
+import api from '../api';
 const drawerWidth = 240;
 
 const Layout = ({ children }) => {
@@ -60,7 +59,7 @@ const Layout = ({ children }) => {
           console.error('API Token is missing');
           return;
         }
-        const response = await axios.get('http://localhost:6061/auth/userinfo', {
+        const response = await api.get('/auth/userinfo', {
           headers: {
             Authorization: `Bearer ${apiToken}`,
           },

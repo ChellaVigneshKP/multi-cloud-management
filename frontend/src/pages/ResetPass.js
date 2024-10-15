@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+// src/pages/ResetPass.js
+
+import React, { useState, useEffect } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
 import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
@@ -12,9 +12,9 @@ import Grid from '@mui/material/Grid';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie';
 import api from '../api';
+import { useLocation, useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
+
 const theme = createTheme({
   palette: {
     primary: {
@@ -26,42 +26,37 @@ const theme = createTheme({
   },
 });
 
-// Basic email regex pattern
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function Copyright(props) {
-  return (
-    <Typography variant="body2" color="text.secondary" align="center" {...props}>
-      {'Copyright © '}
-      <Link color="inherit" href="https://chellavignesh.com">
-        chellavignesh.com
-      </Link>{' '}
-      {new Date().getFullYear()}
-      {'.'}
-    </Typography>
-  );
+function useQuery() {
+  return new URLSearchParams(useLocation().search);
 }
 
-export default function SignInSide() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
+function ResetPassword() {
+  const query = useQuery();
+  const token = query.get('token');
+  const navigate = useNavigate(); // Initialize useNavigate for navigation
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [touched, setTouched] = useState(false); // Track if email has been touched
+  const [loading, setLoading] = useState(false); // Add loading state
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  useEffect(() => {
+    if (!token) {
+      setError('Invalid or missing password reset token.');
+    }
+  }, [token]);
 
   const validateForm = () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Email and Password are required.');
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      setError('Both password fields are required.');
       return false;
     }
-    if (!emailPattern.test(email)) {
-      setError('Invalid email address.');
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
       return false;
     }
-    if (password.length < 6) {
+    if (newPassword.length < 6) {
       setError('Password must be at least 6 characters long.');
       return false;
     }
@@ -75,24 +70,30 @@ export default function SignInSide() {
     if (!validateForm()) {
       return;
     }
-    const formData = { email, password };
-    api.post('/auth/login', formData)
+
+    setLoading(true); // Disable the button by setting loading to true
+
+    const formData = { token, newPassword };
+    api.post('/auth/reset-password', formData)
       .then(res => {
-          Cookies.set('apiToken', res.data.token, { expires: 1, secure: false });
-          setSuccess('Login successful!');
-          setEmail('');
-          setPassword('');
-          setRemember(false);
-          navigate('/dashboard');
+        setSuccess('Password has been reset successfully.');
+        setError('');
+        setNewPassword('');
+        setConfirmPassword('');
+
+        // After successful reset, navigate to login page
+        setTimeout(() => {
+          navigate('/login'); // Redirect to login page
+        }, 1000);
       })
       .catch(err => {
-        if (err.response.data.message && err.response.data.message.includes('Account not verified')) {
-          navigate(`/verify?email=${encodeURIComponent(email)}`);
-        }else if (err.response && err.response.data && err.response.data.message) {
+        if (err.response && err.response.data && err.response.data.message) {
           setError(err.response.data.message);
         } else {
           setError('An error occurred. Please try again.');
         }
+        setSuccess('');
+        setLoading(false); // Re-enable the button in case of an error
       });
   };
 
@@ -126,16 +127,19 @@ export default function SignInSide() {
               <LockOutlinedIcon />
             </Avatar>
             <Typography component="h1" variant="h5">
-              Log in
+              Reset Password
             </Typography>
-            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+              Enter your new password below.
+            </Typography>
+            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
               {error && (
                 <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
                   {error}
                 </Typography>
               )}
               {success && (
-                <Typography color="success" variant="body2" align="center" sx={{ mb: 2 }}>
+                <Typography color="success.main" variant="body2" align="center" sx={{ mb: 2 }}>
                   {success}
                 </Typography>
               )}
@@ -143,57 +147,50 @@ export default function SignInSide() {
                 margin="normal"
                 required
                 fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (!touched) setTouched(true); // Set touched to true when the field is interacted with
-                }}
-                onBlur={() => setTouched(true)} // Mark as touched when field loses focus
-                error={touched && !emailPattern.test(email)}
-                helperText={touched && !emailPattern.test(email) && "Invalid email address."}
+                name="newPassword"
+                label="New Password"
+                type="password"
+                id="newPassword"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
               />
               <TextField
                 margin="normal"
                 required
                 fullWidth
-                name="password"
-                label="Password"
+                name="confirmPassword"
+                label="Confirm New Password"
                 type="password"
-                id="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <FormControlLabel
-                control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} color="primary" />}
-                label="Remember me"
+                id="confirmPassword"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
+                disabled={loading} // Disable the button when loading is true
               >
-                Login
+                {loading ? 'Resetting...' : 'Reset Password'} {/* Change button text when loading */}
               </Button>
               <Grid container>
                 <Grid item xs>
-                  <Link href="/forgot-password" variant="body2">
-                    Forgot password?
-                  </Link>
-                </Grid>
-                <Grid item>
-                  <Link href="/signup" variant="body2">
-                    {"Don't have an account? Sign Up"}
+                  <Link href="/login" variant="body2">
+                    Back to Login
                   </Link>
                 </Grid>
               </Grid>
-              <Copyright sx={{ mt: 5 }} />
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 5 }}>
+                {'Copyright © '}
+                <Link color="inherit" href="https://chellavignesh.com">
+                  chellavignesh.com
+                </Link>{' '}
+                {new Date().getFullYear()}
+                {'.'}
+              </Typography>
             </Box>
           </Box>
         </Grid>
@@ -201,3 +198,6 @@ export default function SignInSide() {
     </ThemeProvider>
   );
 }
+
+// **Export the ResetPassword component as default**
+export default ResetPassword;

@@ -16,11 +16,19 @@ public class RouteValidator {
             "/auth/verify",        // Endpoint for verifying user accounts
             "/auth/login",         // Endpoint for user login
             "/auth/resend",        // Endpoint for resending verification codes
-            "/auth/validate-token" // Endpoint for validating JWT tokens
+            "/auth/validate-token", // Endpoint for validating JWT tokens
+            "/auth/forgot-password",
+            "/auth/reset-password",
+            "/auth/v3/**",
+            "/auth/swagger-ui/**",
+            "/favicon.ico"
     );
 
     // Predicate to determine if a request is secured (requires authentication)
     public Predicate<ServerHttpRequest> isSecured =
             request -> openApiEndpoints.stream()
-                    .noneMatch(url -> request.getURI().getPath().startsWith(url)); // Check if the request path starts with any open API endpoint
+                    .noneMatch(url -> {
+                        String path = request.getURI().getPath();
+                        return path.startsWith(url.replace("/**", ""));  // Handles wildcard properly
+                    }); // Check if the request path starts with any open API endpoint
 }

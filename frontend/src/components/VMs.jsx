@@ -8,6 +8,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Layout from './Layout';
 import Cookies from 'js-cookie';
+import api from '../api';
 
 const VMs = () => {
   const [instances, setInstances] = useState([]);
@@ -22,7 +23,7 @@ const VMs = () => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:6061/vm/aws/ec2', {
+      const response = await fetch(`${api.defaults.baseURL}/vm/aws/ec2`, {
         headers: {
           'Authorization': `Bearer ${apiToken}`,
         },
@@ -160,7 +161,7 @@ const VMs = () => {
                 <TableCell title={vm.name} style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{vm.name}</TableCell>
                 <TableCell style={{ whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip' }}>
                   <a
-                    href={`http://localhost:6061/vm/aws/details/${vm.instanceId}`} // Update URL as needed
+                    href={`${api.defaults.baseURL}/vm/aws/details/${vm.instanceId}`} // Update URL as needed
                     style={{ color: 'blue', textDecoration: 'underline' }}
                     target="_blank" // Optional: opens the link in a new tab
                     rel="noopener noreferrer" // Optional: for security

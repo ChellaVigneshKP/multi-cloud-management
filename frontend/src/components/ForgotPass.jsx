@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -10,8 +10,8 @@ import Grid from '@mui/material/Grid';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import axios from 'axios';
-
+import CircularProgress from '@mui/material/CircularProgress';
+import api from '../api'
 const theme = createTheme({
   palette: {
     primary: {
@@ -40,6 +40,25 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [countdown, setCountdown] = useState(10); // Add countdown state
+  const isMounted = useRef(true); // To track mounted state
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Countdown logic for redirection
+  useEffect(() => {
+    if (countdown > 0 && success) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && success) {
+      window.location.href = '/login';
+    }
+  }, [countdown, success]);
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -55,26 +74,35 @@ export default function ForgotPassword() {
     return true;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    const formData = { email };
-    axios.post('http://localhost:5000/api/forgot-password', formData)
-      .then(res => {
-        setSuccess('Password reset link sent to your email.');
-        setEmail('');
-      })
-      .catch(err => {
-        if (err.response && err.response.data && err.response.data.error) {
-          setError(err.response.data.error);
-        } else {
-          setError('An error occurred. Please try again.');
-        }
-      });
+    setLoading(true); // Show loading spinner
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+
+      if (response.status === 200) {
+        // Success, set the success message and start countdown
+        setSuccess(response.data.message);
+        setError('');
+        setLoading(false);
+        setCountdown(10); // Start countdown for redirect
+      } else {
+        // Handle non-200 status codes
+        throw new Error(response.data.message || 'An error occurred. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.message || 'Failed to send reset link. Please try again.');
+      setLoading(false); // Re-enable the button if error
+    }
   };
 
   return (
@@ -88,12 +116,25 @@ export default function ForgotPassword() {
           md={7}
           sx={{
             backgroundImage: 'url("images/output.jpg")',
-            backgroundColor: (t) => t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
+            backgroundColor: (t) =>
+              t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square sx={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+        <Grid
+          item
+          xs={12}
+          sm={8}
+          md={5}
+          component={Paper}
+          elevation={6}
+          square
+          sx={{
+            backdropFilter: 'blur(10px)',
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          }}
+        >
           <Box
             sx={{
               my: 8,
@@ -114,35 +155,64 @@ export default function ForgotPassword() {
             </Typography>
             <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
               {error && (
-                <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+                <Typography variant="body2" align="center" sx={{ mb: 2, color: 'error.main' }}>
                   {error}
                 </Typography>
               )}
               {success && (
-                <Typography color="success" variant="body2" align="center" sx={{ mb: 2 }}>
-                  {success}
-                </Typography>
+                <>
+                  <Typography variant="body2" align="center" sx={{ mb: 2, color: 'success.main' }}>
+                    {success}
+                  </Typography>
+                  <Typography variant="body2" align="center" sx={{ mb: 2, color: 'success.main' }}>
+                    Redirecting to login page in {countdown} seconds...
+                  </Typography>
+                </>
               )}
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-              >
-                Send Reset Link
-              </Button>
+              {!success && ( // Hide button once success message is shown
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
+              )}
+              {!success && ( // Hide button after success
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  sx={{ mt: 3, mb: 2 }}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <CircularProgress
+                        size={24}
+                        sx={{
+                          color: 'primary.contrastText',
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          marginTop: '-12px',
+                          marginLeft: '-12px',
+                        }}
+                        aria-label="Loading"
+                      />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </Button>
+              )}
               <Grid container>
                 <Grid item xs>
                   <Link href="/login" variant="body2">
