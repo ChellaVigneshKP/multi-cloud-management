@@ -2,11 +2,14 @@ package com.multicloud.auth.controller;
 
 import com.multicloud.auth.dto.*;
 import com.multicloud.auth.exception.*;
+import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
+import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.responses.LoginResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,9 +25,11 @@ import com.multicloud.auth.responses.ErrorResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RequestMapping("/auth")  // Base URL for authentication-related endpoints
 @RestController  // Indicates that this class serves RESTful web services
@@ -35,6 +40,10 @@ public class AuthenticationController {
 
     @Autowired
     private ForgotPasswordService forgotPasswordService;
+    @Autowired
+    private HttpServletRequest request;
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     public AuthenticationController(JweService jweService, AuthenticationService authenticationService) {
         this.jweService = jweService;
@@ -73,10 +82,25 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
         try {
-            User authenticatedUser = authenticationService.authenticate(loginUserDto, userAgent);
+            final String UNKNOWN_IP = "Unknown";  // Define a constant for "Unknown"
+            String clientIpv4 = request.getHeader("X-User-IP");
+            String clientIpv6 = request.getHeader("X-User-IP-V6");
+            String clientIp = UNKNOWN_IP;
+            if (!UNKNOWN_IP.equals(clientIpv4)) {
+                clientIp = clientIpv4;  // Prefer IPv4 if it's available and not "Unknown"
+            } else if (!UNKNOWN_IP.equals(clientIpv6)) {
+                clientIp = clientIpv6;  // Fallback to IPv6 if IPv4 is "Unknown"
+            }
+            User authenticatedUser = authenticationService.authenticate(loginUserDto, userAgent, clientIp);
             String jweToken = jweService.generateToken(authenticatedUser);
-            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime());
+            Optional<RefreshToken> refreshTokenOpt = refreshTokenRepository.findByUserAndIpAddress(authenticatedUser, clientIp);
+            if (refreshTokenOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Refresh token generation failed"));
+            }
+            String refreshToken = refreshTokenOpt.get().getToken();
+            long refreshTokenExpiry = refreshTokenOpt.get().getExpiryDate().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();  // Convert LocalDateTime to epoch milliseconds
             logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
+            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime(),refreshToken,refreshTokenExpiry);
             return ResponseEntity.ok(loginResponse);
         } catch (UsernameNotFoundException e) {
             logger.error("User not found: {}", loginUserDto.getEmail());
@@ -240,5 +264,30 @@ public class AuthenticationController {
             logger.error("Error resetting password: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> payload) {
+        String refreshToken = payload.get("refreshToken");
+
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return ResponseEntity.badRequest().body("Refresh Token is required");
+        }
+
+        RefreshToken storedRefreshToken = authenticationService.getRefreshToken(refreshToken);
+
+        // Check if refresh token is valid and not expired
+        if (!storedRefreshToken.isExpired()) {
+            User user = storedRefreshToken.getUser();
+            String newAccessToken = jweService.generateToken(user);
+            return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+        } else {
+            return ResponseEntity.status(401).body("Invalid or expired refresh token");
+        }
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody Map<String, String> payload) {
+        String refreshToken = payload.get("refreshToken");
+        authenticationService.logout(refreshToken);
+        return ResponseEntity.ok("Logged out successfully");
     }
 }

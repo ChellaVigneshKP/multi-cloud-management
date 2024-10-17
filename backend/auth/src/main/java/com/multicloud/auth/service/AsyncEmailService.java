@@ -44,7 +44,7 @@ public class AsyncEmailService {
 
     @Async("taskExecutor")
     public void sendIpChangeAlertEmailAsync(User user, String clientIp, String userAgent) {
-        String testIp = "27.4.253.24";
+        String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
         String city = locationDetails[0];
         String region = locationDetails[1];

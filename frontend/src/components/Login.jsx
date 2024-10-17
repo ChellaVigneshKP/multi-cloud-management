@@ -78,7 +78,7 @@ export default function SignInSide() {
     const formData = { email, password };
     api.post('/auth/login', formData)
       .then(res => {
-          Cookies.set('apiToken', res.data.token, { expires: 1, secure: false });
+          Cookies.set('apiToken', res.data.jwtToken, { expires: 1, secure: false });
           setSuccess('Login successful!');
           setEmail('');
           setPassword('');

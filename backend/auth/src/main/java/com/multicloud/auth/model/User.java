@@ -57,15 +57,6 @@ public class User implements UserDetails {
     @Column(name = "last_login_ip")
     private String lastLoginIp;
 
-    @Column(name = "refresh_token")
-    private String refreshToken;
-
-    @Column(name = "refresh_token_expiry")
-    private LocalDateTime refreshTokenExpiry;
-
-    @Column(name = "refresh_token_ip")
-    private String refreshTokenIp;
-
     // Constructor for creating a new user
     public User(String username, String email, String password, String firstName, String lastName) {
         this.username = username;
@@ -76,8 +67,7 @@ public class User implements UserDetails {
     }
 
     // Default constructor
-    public User() {
-    }
+    public User() {}
 
     @PrePersist
     public void prePersist() {

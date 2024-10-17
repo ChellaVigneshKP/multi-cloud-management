@@ -7,10 +7,11 @@ import com.multicloud.auth.exception.AccountNotVerifiedException;
 import com.multicloud.auth.exception.EmailAlreadyRegisteredException;
 import com.multicloud.auth.exception.UsernameAlreadyExistsException;
 import com.multicloud.auth.exception.UsernameNotFoundException;
+import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
+import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.repository.UserRepository;
 import jakarta.mail.MessagingException;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -31,24 +32,24 @@ public class AuthenticationService {
     private final KafkaTemplate<String, Map<String, String>> kafkaTemplate;  // Kafka template for message production
     private static final String USER_REGISTRATION_TOPIC = "user-registration";  // Kafka topic for user registration
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
-    private final HttpServletRequest request;
     private final AsyncEmailService asyncEmailService;
+    private final RefreshTokenRepository refreshTokenRepository;
     public AuthenticationService(
             UserRepository userRepository,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             KafkaTemplate<String, Map<String, String>> kafkaTemplate,
-            HttpServletRequest request,
-            AsyncEmailService asyncEmailService
+            AsyncEmailService asyncEmailService,
+            RefreshTokenRepository refreshTokenRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.kafkaTemplate = kafkaTemplate;
-        this.request = request;
         this.asyncEmailService = asyncEmailService;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
     // Method for user registration
     public User signup(RegisterUserDto input) {
@@ -72,7 +73,7 @@ public class AuthenticationService {
     }
 
     // Method for user authentication
-    public User authenticate(LoginUserDto input, String userAgent) {
+    public User authenticate(LoginUserDto input, String userAgent, String clientIp) {
         // Retrieve user by email
         User user = userRepository.findByEmail(input.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Username not found"));
@@ -89,18 +90,23 @@ public class AuthenticationService {
                         input.getPassword()
                 )
         );
-
-        final String UNKNOWN_IP = "Unknown";  // Define a constant for "Unknown"
-        String clientIpv4 = request.getHeader("X-User-IP");
-        String clientIpv6 = request.getHeader("X-User-IP-V6");
-        String clientIp = UNKNOWN_IP;
-        if (!UNKNOWN_IP.equals(clientIpv4)) {
-            clientIp = clientIpv4;  // Prefer IPv4 if it's available and not "Unknown"
-        } else if (!UNKNOWN_IP.equals(clientIpv6)) {
-            clientIp = clientIpv6;  // Fallback to IPv6 if IPv4 is "Unknown"
-        }
+        final String ipaddress = clientIp;
         logger.info("User: {} logged in from Ip Address: {}", user.getUsername(), clientIp);
-        boolean isNewIp = !clientIp.equals(user.getLastLoginIp()) && !"Unknown".equals(user.getLastLoginIp());
+        Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUserAndIpAddress(user, ipaddress);
+        boolean isNewIp = refreshTokenRepository.findByUser(user).stream()
+                .noneMatch(token -> token.getIpAddress().equals(ipaddress));
+        String refreshTokenValue = UUID.randomUUID().toString();
+        String[] parsedUserAgent = UserAgentParser.parseUserAgent(userAgent);
+        String deviceInfo = parsedUserAgent[2];
+        if (existingTokenOpt.isPresent()) {
+            RefreshToken existingToken = existingTokenOpt.get();
+            existingToken.setToken(refreshTokenValue);  // Update the token value
+            existingToken.setExpiryDate(LocalDateTime.now().plusDays(1)); // Update expiry date
+            refreshTokenRepository.save(existingToken); // Save the updated token
+        } else {
+            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, LocalDateTime.now().plusDays(1), deviceInfo, clientIp);
+            refreshTokenRepository.save(refreshToken);
+        }
         user.setLastLogin(LocalDateTime.now());
         user.setLastLoginIp(clientIp);
         userRepository.save(user);
@@ -110,7 +116,13 @@ public class AuthenticationService {
         }
         return user;  // Return authenticated user
     }
-
+    public RefreshToken getRefreshToken(String token) {
+        return refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+    }
+    public void logout(String token) {
+        refreshTokenRepository.deleteByToken(token);
+    }
     // Method to verify user account
     public void verifyUser(VerifyUserDto input) {
         Map<String, String> userDetails = new HashMap<>();
@@ -141,7 +153,7 @@ public class AuthenticationService {
                 throw new RuntimeException("Invalid verification code");
             }
         } else {
-            throw new RuntimeException("User not found");
+            throw new UsernameNotFoundException("User not found");
         }
     }
 
@@ -159,7 +171,7 @@ public class AuthenticationService {
             sendVerificationEmail(user);  // Send verification email
             userRepository.save(user);  // Save updated user
         } else {
-            throw new RuntimeException("User not found");
+            throw new UsernameNotFoundException("User not found");
         }
     }
 
