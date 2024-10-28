@@ -1,5 +1,6 @@
 package com.multicloud.api_gateway.util;
 
+import com.multicloud.api_gateway.exception.TokenExpiredException;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -41,12 +42,11 @@ public class JweUtil {
             JWEObject jweObject = JWEObject.parse(token);
             RSADecrypter decrypter = new RSADecrypter(privateKey);
             jweObject.decrypt(decrypter);
-            String payload = jweObject.getPayload().toString();
-            JWTClaimsSet claimsSet = JWTClaimsSet.parse(payload);
+            JWTClaimsSet claimsSet = JWTClaimsSet.parse(jweObject.getPayload().toJSONObject());
 
             // Validate token expiration
             if (claimsSet.getExpirationTime().before(new Date())) {
-                throw new Exception("Token has expired");
+                throw new TokenExpiredException("Token has expired");
             }
 
             return claimsSet;

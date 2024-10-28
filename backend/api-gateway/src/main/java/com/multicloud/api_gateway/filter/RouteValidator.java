@@ -22,7 +22,9 @@ public class RouteValidator {
             "/auth/take-action",
             "/auth/v3/**",
             "/auth/swagger-ui/**",
-            "/favicon.ico"
+            "/favicon.ico",
+            "/auth/refresh-token",
+            "/auth/logout"
     );
 
     // Predicate to determine if a request is secured (requires authentication)

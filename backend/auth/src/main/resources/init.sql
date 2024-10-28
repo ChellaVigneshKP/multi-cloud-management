@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
                                               expiry_date TIMESTAMP NOT NULL,
                                               device_info VARCHAR(255),
                                               ip_address VARCHAR(255),
+                                              visitor_id VARCHAR(255),
                                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                                               user_id BIGINT NOT NULL,
                                               CONSTRAINT fk_user

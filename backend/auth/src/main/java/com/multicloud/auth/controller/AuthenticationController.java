@@ -93,7 +93,7 @@ public class AuthenticationController {
             }
             User authenticatedUser = authenticationService.authenticate(loginUserDto, userAgent, clientIp);
             String jweToken = jweService.generateToken(authenticatedUser);
-            Optional<RefreshToken> refreshTokenOpt = refreshTokenRepository.findByUserAndIpAddress(authenticatedUser, clientIp);
+            Optional<RefreshToken> refreshTokenOpt = refreshTokenRepository.findByUserAndVisitorId(authenticatedUser, loginUserDto.getVisitorId());
             if (refreshTokenOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Refresh token generation failed"));
             }
@@ -265,29 +265,43 @@ public class AuthenticationController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    @Operation(summary = "Refresh JWT token", description = "Generate new JWT and refresh tokens using an existing refresh token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request - refresh token is required",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - refresh token is invalid or expired",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> payload) {
         String refreshToken = payload.get("refreshToken");
-
         if (refreshToken == null || refreshToken.isEmpty()) {
             return ResponseEntity.badRequest().body("Refresh Token is required");
         }
-
-        RefreshToken storedRefreshToken = authenticationService.getRefreshToken(refreshToken);
-
-        // Check if refresh token is valid and not expired
-        if (!storedRefreshToken.isExpired()) {
-            User user = storedRefreshToken.getUser();
-            String newAccessToken = jweService.generateToken(user);
-            return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
-        } else {
-            return ResponseEntity.status(401).body("Invalid or expired refresh token");
+        // Validate the refresh token and user association
+        RefreshToken currentRefreshToken = authenticationService.getRefreshToken(refreshToken);
+        if (currentRefreshToken == null || currentRefreshToken.isExpired()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired refresh token");
         }
+        User user = currentRefreshToken.getUser();
+        Map<String, String> tokens = authenticationService.refreshTokens(user, refreshToken);
+        logger.info("Token refreshed successfully for User: {}", user.getUsername());
+        return ResponseEntity.ok(tokens);
     }
+    @Operation(summary = "Logout user", description = "Log out the user by invalidating the refresh token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Logged out successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request - refresh token missing",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody Map<String, String> payload) {
-        String refreshToken = payload.get("refreshToken");
+        String refreshToken = payload.get("token");
         authenticationService.logout(refreshToken);
+        logger.info("User with refresh token {} logged out successfully", refreshToken);
         return ResponseEntity.ok("Logged out successfully");
     }
 }

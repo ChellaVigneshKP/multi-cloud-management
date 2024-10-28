@@ -1,5 +1,3 @@
-// src/components/Layout.js
-
 import React, { useState, useEffect } from 'react';
 import {
   AppBar,
@@ -40,26 +38,26 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import api from '../api';
+
 const drawerWidth = 240;
 
 const Layout = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [userName, setUserName] = useState(''); // State to store user's name
-  const [userEmail, setUserEmail] = useState(''); // State to store user's email
-  const [avatarLetter, setAvatarLetter] = useState(''); // State to store the first letter for the avatar
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [avatarLetter, setAvatarLetter] = useState('');
   const theme = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch user data when the component mounts
     const fetchUserData = async () => {
       try {
         const apiToken = Cookies.get('apiToken');
         if (!apiToken) {
           console.error('API Token is missing');
-          navigate('/login'); // Redirect to login if token is missing
+          navigate('/login');
           return;
         }
         const response = await api.get('/auth/userinfo', {
@@ -73,7 +71,7 @@ const Layout = ({ children }) => {
         setAvatarLetter(username.charAt(0).toUpperCase());
       } catch (error) {
         console.error('Error fetching user data:', error);
-        navigate('/login'); // Redirect to login on error
+        navigate('/login');
       }
     };
 
@@ -101,11 +99,25 @@ const Layout = ({ children }) => {
     setLogoutDialogOpen(false);
   };
 
-  const handleLogoutConfirm = () => {
-    Cookies.remove('apiToken');
-    localStorage.clear();
-    setLogoutDialogOpen(false);
-    navigate('/login');
+  const handleLogoutConfirm = async () => {
+    try {
+      // **Call the /auth/logout API**
+      const refreshToken = Cookies.get('refreshToken');
+      await api.post('/auth/logout', { token: refreshToken }, {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      });
+
+      // **Clear tokens and navigate to login**
+      Cookies.remove('apiToken');
+      Cookies.remove('refreshToken');
+      localStorage.clear();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setLogoutDialogOpen(false);
+    }
   };
 
   return (

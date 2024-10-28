@@ -1,5 +1,6 @@
 package com.multicloud.api_gateway.filter;
 
+import com.multicloud.api_gateway.exception.TokenExpiredException;
 import com.multicloud.api_gateway.util.JweUtil;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.slf4j.Logger;
@@ -82,6 +83,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     // Continue the filter chain with the modified request
                     return chain.filter(exchange.mutate().request(modifiedRequest).build());
 
+                } catch (TokenExpiredException e) {
+                    return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Token has expired");
                 } catch (Exception e) {
                     return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Invalid JWE token");
                 }

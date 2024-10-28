@@ -110,10 +110,8 @@ public class JweService {
             // Load the private key
             RSAPrivateKey privateKey = loadPrivateKey();
             // Decrypt with private key
-            RSADecrypter decrypter = new RSADecrypter(privateKey);
-            jweObject.decrypt(decrypter);
-            String payload = jweObject.getPayload().toString();
-            JWTClaimsSet claimsSet = JWTClaimsSet.parse(payload);
+            RSADecrypter decrypted = new RSADecrypter(privateKey);
+            jweObject.decrypt(decrypted);
             // Extract claims
             logger.debug("Claims Extracted");
             return JWTClaimsSet.parse(jweObject.getPayload().toJSONObject());

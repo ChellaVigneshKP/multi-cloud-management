@@ -3,10 +3,7 @@ package com.multicloud.auth.service;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
-import com.multicloud.auth.exception.AccountNotVerifiedException;
-import com.multicloud.auth.exception.EmailAlreadyRegisteredException;
-import com.multicloud.auth.exception.UsernameAlreadyExistsException;
-import com.multicloud.auth.exception.UsernameNotFoundException;
+import com.multicloud.auth.exception.*;
 import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
@@ -21,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service  // Indicates that this class is a service component
@@ -34,6 +32,7 @@ public class AuthenticationService {
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
     private final AsyncEmailService asyncEmailService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final JweService jweService;
     public AuthenticationService(
             UserRepository userRepository,
             AuthenticationManager authenticationManager,
@@ -41,7 +40,8 @@ public class AuthenticationService {
             EmailService emailService,
             KafkaTemplate<String, Map<String, String>> kafkaTemplate,
             AsyncEmailService asyncEmailService,
-            RefreshTokenRepository refreshTokenRepository
+            RefreshTokenRepository refreshTokenRepository,
+            JweService jweService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -50,6 +50,7 @@ public class AuthenticationService {
         this.kafkaTemplate = kafkaTemplate;
         this.asyncEmailService = asyncEmailService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.jweService = jweService;
     }
     // Method for user registration
     public User signup(RegisterUserDto input) {
@@ -82,7 +83,6 @@ public class AuthenticationService {
         if (!user.isEnabled()) {
             throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
         }
-
         // Authenticate user with provided credentials
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -90,38 +90,72 @@ public class AuthenticationService {
                         input.getPassword()
                 )
         );
-        final String ipaddress = clientIp;
+        String visitorId = input.getVisitorId();
         logger.info("User: {} logged in from Ip Address: {}", user.getUsername(), clientIp);
-        Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUserAndIpAddress(user, ipaddress);
-        boolean isNewIp = refreshTokenRepository.findByUser(user).stream()
-                .noneMatch(token -> token.getIpAddress().equals(ipaddress));
-        String refreshTokenValue = UUID.randomUUID().toString();
+        Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUserAndVisitorId(user, visitorId);
+        String refreshTokenValue;
+        do {
+            refreshTokenValue = UUID.randomUUID().toString();
+        } while (refreshTokenRepository.existsByToken(refreshTokenValue));
         String[] parsedUserAgent = UserAgentParser.parseUserAgent(userAgent);
-        String deviceInfo = parsedUserAgent[2];
+        String deviceInfo = parsedUserAgent[2]+":"+parsedUserAgent[1]+":"+parsedUserAgent[0];
+        boolean isNewVisitorIdWithNewIp = refreshTokenRepository.findByUser(user).stream()
+                .noneMatch(token -> Objects.equals(token.getVisitorId(), visitorId) || Objects.equals(token.getIpAddress(), clientIp));
         if (existingTokenOpt.isPresent()) {
             RefreshToken existingToken = existingTokenOpt.get();
             existingToken.setToken(refreshTokenValue);  // Update the token value
             existingToken.setExpiryDate(LocalDateTime.now().plusDays(1)); // Update expiry date
+            existingToken.setIpAddress(clientIp);
             refreshTokenRepository.save(existingToken); // Save the updated token
         } else {
-            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, LocalDateTime.now().plusDays(1), deviceInfo, clientIp);
+            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, LocalDateTime.now().plusDays(1), deviceInfo, clientIp, visitorId);
             refreshTokenRepository.save(refreshToken);
+            if (isNewVisitorIdWithNewIp) {
+                // Trigger email only if both visitor ID and IP are new
+                logger.info("New Device or IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
+                asyncEmailService.sendIpChangeAlertEmailAsync(user, clientIp, userAgent);
+            }
         }
         user.setLastLogin(LocalDateTime.now());
         user.setLastLoginIp(clientIp);
         userRepository.save(user);
-        if (isNewIp) {
-            logger.info("New IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
-            asyncEmailService.sendIpChangeAlertEmailAsync(user,clientIp,userAgent);
-        }
         return user;  // Return authenticated user
     }
     public RefreshToken getRefreshToken(String token) {
         return refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+                .orElseThrow(() -> new TokenNotFoundException("Refresh token not found"));
     }
+    public synchronized Map<String, String> refreshTokens(User user, String oldRefreshToken) {
+        Optional<RefreshToken> currentRefreshToken = refreshTokenRepository.findByToken(oldRefreshToken);
+        if (currentRefreshToken.isEmpty() || currentRefreshToken.get().isExpired()) {
+            throw new InvalidRefreshTokenException("Old refresh token not found or expired");
+        }
+        String newAccessToken = jweService.generateToken(user);
+        String newRefreshTokenValue;
+        do {
+            newRefreshTokenValue = UUID.randomUUID().toString();
+        } while (refreshTokenRepository.existsByToken(newRefreshTokenValue));
+        LocalDateTime newExpiryDate = LocalDateTime.now().plusDays(7);
+        RefreshToken refreshToken = currentRefreshToken.get();
+        refreshToken.setToken(newRefreshTokenValue);
+        refreshToken.setExpiryDate(newExpiryDate);
+        refreshTokenRepository.save(refreshToken);  // Save the updated token record
+        Map<String, String> tokenMap = new HashMap<>();
+        tokenMap.put("accessToken", newAccessToken);
+        tokenMap.put("refreshToken", newRefreshTokenValue);
+        tokenMap.put("refreshTokenExpiry", String.valueOf(newExpiryDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
+        return tokenMap;
+    }
+
     public void logout(String token) {
-        refreshTokenRepository.deleteByToken(token);
+        Optional<RefreshToken> refreshTokenOptional = refreshTokenRepository.findByToken(token);
+        if (refreshTokenOptional.isPresent()) {
+            RefreshToken refreshToken = refreshTokenOptional.get();
+            refreshToken.setToken("");  // Clear the token field
+            refreshTokenRepository.save(refreshToken);  // Update the entity in the database
+        } else {
+            throw new TokenNotFoundException("Refresh token not found.");
+        }
     }
     // Method to verify user account
     public void verifyUser(VerifyUserDto input) {

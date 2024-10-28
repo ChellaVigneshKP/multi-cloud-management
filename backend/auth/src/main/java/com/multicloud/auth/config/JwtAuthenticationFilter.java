@@ -1,6 +1,7 @@
 package com.multicloud.auth.config;
 
 import com.multicloud.auth.service.JweService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JweService jweService;
     private final UserDetailsService userDetailsService;
     private final PathMatcher pathMatcher = new AntPathMatcher();
-    private final List<String> excludedPaths = Arrays.asList("/auth/validate-token","/auth/userinfo"); // Add any other paths to exclude
+    private final List<String> excludedPaths = Arrays.asList("/auth/validate-token","/auth/userinfo","/auth/logout","/auth/refresh-token"); // Add any other paths to exclude
     public JwtAuthenticationFilter(
             JweService jweService,
             UserDetailsService userDetailsService,
@@ -68,8 +69,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String token = authHeader.substring(7);
             final String username = jweService.extractUsername(token);
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
             if (username != null && authentication == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
                 if (jweService.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
@@ -81,8 +84,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
+
             filterChain.doFilter(request, response);
+
+        } catch (ExpiredJwtException e) {
+            // Handling for expired token
+            logger.error("Token has expired", e);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // Send 401 status
+            response.getWriter().write("Token expired. Please log in again."); // Send custom message
+
         } catch (Exception e) {
+            // General error handling for other exceptions
             logger.error("Error in JwtAuthenticationFilter", e);
             handlerExceptionResolver.resolveException(request, response, null, e);
         }

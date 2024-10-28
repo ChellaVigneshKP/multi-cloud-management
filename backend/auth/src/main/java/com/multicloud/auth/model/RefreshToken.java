@@ -28,25 +28,44 @@ public class RefreshToken {
     @Column(name = "ip_address", nullable = true)
     private String ipAddress;
 
+    @Column(name = "visitor_id", nullable = true)
+    private String visitorId;
+
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt; // Track the first login time for each token
+    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public RefreshToken() {}
+    public RefreshToken() {
+        // No-argument constructor is required by JPA
+    }
 
-    public RefreshToken(User user, String token, LocalDateTime expiryDate, String deviceInfo, String ipAddress) {
+    public RefreshToken(User user, String token, LocalDateTime expiryDate, String deviceInfo, String ipAddress, String visitorId) {
         this.user = user;
         this.token = token;
         this.expiryDate = expiryDate;
         this.deviceInfo = deviceInfo;
         this.ipAddress = ipAddress;
-        this.createdAt = LocalDateTime.now();  // Set the creation time when the token is generated
+        this.visitorId = visitorId;
+        this.createdAt = LocalDateTime.now();  // Set createdAt during explicit creation
+    }
+
+    @PrePersist
+    public void prePersist() {
+        // Set createdAt if not already set
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiryDate);
+    }
+
+    public void updateToken(String newToken, LocalDateTime newExpiryDate) {
+        this.token = newToken;
+        this.expiryDate = newExpiryDate;
     }
 }

@@ -34,17 +34,8 @@ const Clouds = () => {
 
   // Function to fetch cloud accounts
   const fetchCloudAccounts = async () => {
-    const apiToken = Cookies.get('apiToken');
-    if (!apiToken) {
-      console.error('API Token is missing');
-      return;
-    }
     try {
-      const response = await api.get('/vm/cloudaccounts', {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-        },
-      });
+      const response = await api.get('/vm/cloudaccounts');
       setCloudAccounts(response.data);
     } catch (error) {
       console.error('Error fetching cloud accounts:', error);
@@ -52,22 +43,13 @@ const Clouds = () => {
   };
 
   const fetchAwsRegions = async () => {
-    const apiToken = Cookies.get('apiToken');
-    if (!apiToken) {
-      console.error('API Token is missing');
-      return;
-    }
     try {
-      const response = await api.get('/vm/aws/regions', {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-        },
-      });
+      const response = await api.get('/vm/aws/regions');
       setRegions(response.data.regions);
     } catch (error) {
       console.error('Error fetching AWS regions:', error);
     }
-  };
+  }  
 
   // Fetch cloud accounts when component mounts
   useEffect(() => {
