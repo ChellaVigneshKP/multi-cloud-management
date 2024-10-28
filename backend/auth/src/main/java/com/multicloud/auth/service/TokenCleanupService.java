@@ -14,16 +14,16 @@ public class TokenCleanupService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final Logger logger = LoggerFactory.getLogger(TokenCleanupService.class);
+
     public TokenCleanupService(RefreshTokenRepository refreshTokenRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
-    // Schedule this method to run once a day (e.g., every 24 hours)
-    @Scheduled(cron = "0 0 0 * * ?")  // This cron runs every day at midnight
+    @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void cleanOldRefreshTokens() {
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);  // Tokens older than 30 days
-        int deletedCount = refreshTokenRepository.deleteByCreatedAtBefore(cutoffDate);
-        logger.info("Deleted {} old refresh tokens", deletedCount);
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        int deletedCount = refreshTokenRepository.deleteByExpiryDateBefore(cutoffDate);
+        logger.info("Deleted {} old, expired refresh tokens", deletedCount);
     }
 }
