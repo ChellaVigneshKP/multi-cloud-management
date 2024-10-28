@@ -45,6 +45,18 @@ public class User implements UserDetails {
 
     private boolean enabled;
 
+    @Column(name = "password_reset_token")
+    private String passwordResetToken;
+
+    @Column(name = "password_reset_expires_at")
+    private LocalDateTime passwordResetExpiresAt;
+
+    @Column(name ="last_login")
+    private LocalDateTime lastLogin;
+
+    @Column(name = "last_login_ip")
+    private String lastLoginIp;
+
     // Constructor for creating a new user
     public User(String username, String email, String password, String firstName, String lastName) {
         this.username = username;
@@ -55,8 +67,7 @@ public class User implements UserDetails {
     }
 
     // Default constructor
-    public User() {
-    }
+    public User() {}
 
     @PrePersist
     public void prePersist() {

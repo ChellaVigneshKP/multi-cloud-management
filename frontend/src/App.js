@@ -7,6 +7,8 @@ import ForgotPage from './pages/ForgotPage'
 import VMsPage from './pages/VMsPage';
 import VerifyPage from './pages/VerifyPage';
 import CloudsPage from './pages/CloudsPage';
+import ResetPassword from './pages/ResetPass';
+import ChangePassPage from './pages/ChangePassPage';
 function App() {
   return (
     <Router>
@@ -17,6 +19,8 @@ function App() {
         <Route path="/verify" element={<VerifyPage/>} />
         <Route path="/dashboard" element={<DashboardPage/>} />
         <Route path="/forgot-password" element={<ForgotPage/>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/change-password" element={<ChangePassPage/>} />
         <Route path="/vms" element={<VMsPage/>} />
         <Route path="/clouds" element={<CloudsPage/>}/>
       </Routes>

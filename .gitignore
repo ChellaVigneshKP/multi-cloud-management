@@ -18,7 +18,8 @@
 /frontend/.env.development.local
 /frontend/.env.test.local
 /frontend/.env.production.local
-
+/frontend/src/.env
+frontend/.env
 # Logs
 /frontend/npm-debug.log*
 /frontend/yarn-debug.log*
@@ -62,6 +63,7 @@
 
 ### VS Code
 /backend/**/.vscode/
+/backend/**/key/
 
 # --- API Gateway ---
 /backend/**/.env

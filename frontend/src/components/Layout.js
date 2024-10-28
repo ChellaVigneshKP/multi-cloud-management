@@ -1,16 +1,83 @@
-import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Button, Drawer, List, ListItemButton, ListItemText, Box, useTheme, useMediaQuery, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
-import { Menu as MenuIcon, AccountCircle, Notifications as NotificationsIcon, Settings as SettingsIcon, ExitToApp as LogoutIcon, Person as PersonIcon, Dashboard as DashboardIcon, Cloud as CloudIcon, DesktopWindows as DesktopWindowsIcon, AttachMoney as AttachMoneyIcon, NotificationImportant as NotificationImportantIcon } from '@mui/icons-material';
-import { Link , useNavigate} from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Menu,
+  MenuItem,
+  Button,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemText,
+  Box,
+  useTheme,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
+  Avatar,
+  Badge,
+  Link as MuiLink,
+} from '@mui/material';
+import {
+  Menu as MenuIcon,
+  Notifications as NotificationsIcon,
+  Settings as SettingsIcon,
+  ExitToApp as LogoutIcon,
+  Person as PersonIcon,
+  Dashboard as DashboardIcon,
+  Cloud as CloudIcon,
+  DesktopWindows as DesktopWindowsIcon,
+  AttachMoney as AttachMoneyIcon,
+  NotificationImportant as NotificationImportantIcon,
+} from '@mui/icons-material';
+import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import api from '../api';
+
+const drawerWidth = 240;
 
 const Layout = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [avatarLetter, setAvatarLetter] = useState('');
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const apiToken = Cookies.get('apiToken');
+        if (!apiToken) {
+          console.error('API Token is missing');
+          navigate('/login');
+          return;
+        }
+        const response = await api.get('/auth/userinfo', {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+          },
+        });
+        const { username, email } = response.data;
+        setUserName(username);
+        setUserEmail(email);
+        setAvatarLetter(username.charAt(0).toUpperCase());
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        navigate('/login');
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -23,175 +90,283 @@ const Layout = ({ children }) => {
     setDrawerOpen(!drawerOpen);
   };
 
-  const handleDrawerClose = () => {
-    setDrawerOpen(false);
-  };
   const handleLogoutClick = () => {
     setLogoutDialogOpen(true);
+    handleMenuClose();
   };
 
   const handleLogoutDialogClose = () => {
     setLogoutDialogOpen(false);
   };
 
-  const handleLogoutConfirm = () => {
-    Cookies.remove('apiToken');
-    localStorage.clear();
-    setLogoutDialogOpen(false);
-    navigate('/login');
+  const handleLogoutConfirm = async () => {
+    try {
+      // **Call the /auth/logout API**
+      const refreshToken = Cookies.get('refreshToken');
+      await api.post('/auth/logout', { token: refreshToken }, {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      });
+
+      // **Clear tokens and navigate to login**
+      Cookies.remove('apiToken');
+      Cookies.remove('refreshToken');
+      localStorage.clear();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setLogoutDialogOpen(false);
+    }
   };
 
   return (
     <Box sx={{ display: 'flex' }}>
+      {/* AppBar */}
       <AppBar
         position="fixed"
+        color="primary"
         sx={{
-          width: { sm: drawerOpen ? `calc(100% - 240px)` : '100%' },
-          ml: { sm: drawerOpen ? '240px' : '0' },
-          transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.easeOut,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
+          zIndex: theme.zIndex.drawer + 1,
         }}
+        role="banner"
       >
         <Toolbar>
+          {/* Menu Button */}
           <IconButton
             edge="start"
             color="inherit"
-            aria-label="menu"
+            aria-label="open drawer"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { xs: 'block', sm: 'block' } }}
+            sx={{ mr: 2 }}
+            size="large"
           >
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ flexGrow: 1, fontSize: { xs: '1rem', sm: '1.5rem' } }}
-            >
-              Multi-Cloud Management
-            </Typography>
+          {/* Logo and Title */}
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ flexGrow: 1 }}
+            aria-label="Multi-Cloud Management Dashboard"
+          >
+            <img
+              src="/images/logo.png"
+              alt="Logo"
+              style={{ height: 30, verticalAlign: 'middle', marginRight: 10 }}
+            />
+            Multi-Cloud Management
+          </Typography>
 
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, ml: 2 }}>
-              <Button color="inherit" startIcon={<DashboardIcon />} component={Link} to="/dashboard">Dashboard</Button>
-              <Button color="inherit" startIcon={<CloudIcon />} component={Link} to="/clouds">Clouds</Button>
-            </Box>
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <IconButton color="inherit" sx={{ ml: 2 }}>
-              <NotificationsIcon />
-            </IconButton>
-            <IconButton
-              edge="end"
+          {/* Top Navigation Links - Visible only on medium and larger screens */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Button
               color="inherit"
-              onClick={handleMenuClick}
-              sx={{ ml: 2 }}
+              startIcon={<DashboardIcon />}
+              component={Link}
+              to="/dashboard"
+              aria-label="Navigate to Dashboard"
             >
-              <AccountCircle />
-            </IconButton>
+              Dashboard
+            </Button>
+            <Button
+              color="inherit"
+              startIcon={<CloudIcon />}
+              component={Link}
+              to="/clouds"
+              aria-label="Navigate to Clouds"
+            >
+              Clouds
+            </Button>
           </Box>
+
+          {/* Notification and Account Icons */}
+          <IconButton
+            color="inherit"
+            sx={{ ml: 1 }}
+            aria-label="View Notifications"
+            size="large"
+          >
+            <Badge badgeContent={4} color="error">
+              <NotificationsIcon />
+            </Badge>
+          </IconButton>
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleMenuClick}
+            sx={{ ml: 1 }}
+            aria-label="Open Account Menu"
+            size="large"
+          >
+            <Avatar sx={{ bgcolor: theme.palette.secondary.main }} aria-label="User Avatar">
+              {avatarLetter}
+            </Avatar>
+          </IconButton>
         </Toolbar>
       </AppBar>
+
+      {/* Drawer */}
+      <Drawer
+        variant="temporary"
+        open={drawerOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+        aria-label="Side Navigation"
+      >
+        <Toolbar />
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'auto',
+          }}
+          role="navigation"
+          aria-label="Main Navigation Links"
+        >
+          <List>
+            <ListItemButton
+              component={Link}
+              to="/dashboard"
+              onClick={handleDrawerToggle}
+              aria-label="Navigate to Dashboard"
+            >
+              <DashboardIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="Dashboard" />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/vms"
+              onClick={handleDrawerToggle}
+              aria-label="Navigate to VMs"
+            >
+              <DesktopWindowsIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="VMs" />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/cost-manager"
+              onClick={handleDrawerToggle}
+              aria-label="Navigate to Cost Manager"
+            >
+              <AttachMoneyIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="Cost Manager" />
+            </ListItemButton>
+            <ListItemButton
+              component={Link}
+              to="/alerts"
+              onClick={handleDrawerToggle}
+              aria-label="Navigate to Monitoring & Alerts"
+            >
+              <NotificationImportantIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="Monitoring & Alerts" />
+            </ListItemButton>
+            {/* Clouds button - Visible only on small screens */}
+            <ListItemButton
+              component={Link}
+              to="/clouds"
+              onClick={handleDrawerToggle}
+              sx={{ display: { xs: 'flex', md: 'none' } }}
+              aria-label="Navigate to Clouds"
+            >
+              <CloudIcon sx={{ mr: 2 }} aria-hidden="true" />
+              <ListItemText primary="Clouds" />
+            </ListItemButton>
+          </List>
+          {/* Spacer to push content to the bottom */}
+          <Box sx={{ flexGrow: 1 }} />
+          {/* Footer */}
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body2" color="textSecondary" align="center">
+              {'Copyright © '}
+              <MuiLink color="inherit" href="https://chellavignesh.com/">
+                chellavignesh.com
+              </MuiLink>{' '}
+              {new Date().getFullYear()}.
+            </Typography>
+          </Box>
+        </Box>
+      </Drawer>
+
+      {/* Account Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        aria-label="Account Menu"
       >
-        <MenuItem onClick={handleMenuClose}>
-          <PersonIcon sx={{ mr: 1 }} />
-          My Account
+        {/* Enhanced Profile Menu */}
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2 }} aria-hidden="true">
+            {avatarLetter}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle1">{userName}</Typography>
+            <Typography variant="body2" color="textSecondary">
+              {userEmail}
+            </Typography>
+          </Box>
+        </Box>
+        <Divider />
+        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Profile">
+          <PersonIcon sx={{ mr: 1 }} aria-hidden="true" />
+          Profile
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <SettingsIcon sx={{ mr: 1 }} />
+        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Settings">
+          <SettingsIcon sx={{ mr: 1 }} aria-hidden="true" />
           Settings
         </MenuItem>
-        <MenuItem onClick={handleLogoutClick}>
-          <LogoutIcon sx={{ mr: 1 }} />
+        <Divider />
+        <MenuItem onClick={handleLogoutClick} aria-label="Logout">
+          <LogoutIcon sx={{ mr: 1 }} aria-hidden="true" />
           Logout
         </MenuItem>
       </Menu>
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={handleDrawerClose}
-        variant={isSmallScreen ? 'temporary' : 'persistent'}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: 240,
-            height: '100%',
-            top: 0,
-            position: isSmallScreen ? 'absolute' : 'fixed',
-            transition: theme.transitions.create('transform', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
-            transform: isSmallScreen ? 'translateX(0)' : 'translateX(0)',
-          },
-        }}
-      >
-        <Box
-          role="presentation"
-          onClick={handleDrawerClose}
-          onKeyDown={handleDrawerClose}
-        >
-          <List>
-            <ListItemButton component={Link} to="/dashboard">
-              <DashboardIcon sx={{ mr: 1 }} />
-              <ListItemText primary="Dashboard" />
-            </ListItemButton>
-            <ListItemButton component={Link} to="/vms">
-              <DesktopWindowsIcon sx={{ mr: 1 }} />
-              <ListItemText primary="VMs" />
-            </ListItemButton>
-            <ListItemButton component={Link} to="/cost-manager">
-              <AttachMoneyIcon sx={{ mr: 1 }} />
-              <ListItemText primary="Cost Manager" />
-            </ListItemButton>
-            <ListItemButton component={Link} to="/alerts">
-              <NotificationImportantIcon sx={{ mr: 1 }} />
-              <ListItemText primary="Monitoring and Alerts" />
-            </ListItemButton>
-          </List>
-        </Box>
-      </Drawer>
 
+      {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          mt: 8,
-          ml: { sm: drawerOpen ? '240px' : '0' },
-          transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.easeOut,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          mt: 8, // Adjusted for AppBar height
         }}
+        aria-label="Main Content Area"
       >
         {children}
       </Box>
+
+      {/* Logout Confirmation Dialog */}
       <Dialog
         open={logoutDialogOpen}
         onClose={handleLogoutDialogClose}
         aria-labelledby="logout-dialog-title"
         aria-describedby="logout-dialog-description"
       >
-        <DialogTitle id="logout-dialog-title">
-          {"Confirm Logout"}
-        </DialogTitle>
+        <DialogTitle id="logout-dialog-title">{'Confirm Logout'}</DialogTitle>
         <DialogContent>
           <DialogContentText id="logout-dialog-description">
             Are you sure you want to logout?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleLogoutDialogClose} color="primary">
+          <Button onClick={handleLogoutDialogClose} color="primary" aria-label="Cancel Logout">
             Cancel
           </Button>
-          <Button onClick={handleLogoutConfirm} color="secondary" autoFocus>
+          <Button onClick={handleLogoutConfirm} color="secondary" autoFocus aria-label="Confirm Logout">
             Logout
           </Button>
         </DialogActions>

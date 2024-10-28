@@ -22,10 +22,30 @@ SECRET_KEY = base64.b64decode(encoded_key)  # Decode the base64-encoded JWT secr
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+AWS_REGIONS = [
+    ("ap-south-1", "Asia Pacific (Mumbai)"),
+    ("eu-north-1", "EU (Stockholm)"),
+    ("eu-west-3", "EU (Paris)"),
+    ("eu-west-2", "EU (London)"),
+    ("eu-west-1", "EU (Ireland)"),
+    ("ap-northeast-3", "Asia Pacific (Osaka-Local)"),
+    ("ap-northeast-2", "Asia Pacific (Seoul)"),
+    ("ap-northeast-1", "Asia Pacific (Tokyo)"),
+    ("ca-central-1", "Canada (Central)"),
+    ("sa-east-1", "South America (Sao Paulo)"),
+    ("ap-southeast-1", "Asia Pacific (Singapore)"),
+    ("ap-southeast-2", "Asia Pacific (Sydney)"),
+    ("eu-central-1", "EU (Frankfurt)"),
+    ("us-east-1", "US East (N. Virginia)"),
+    ("us-east-2", "US East (Ohio)"),
+    ("us-west-1", "US West (N. California)"),
+    ("us-west-2", "US West (Oregon)")
+]
+
 def create_tables():
     """
     Function to create the necessary database tables if they do not exist.
-    The tables include users, aws_cloud_accounts, gcp_accounts, and azure_accounts.
+    The tables include users, aws_cloud_accounts, gcp_accounts, azure_accounts, and aws_regions.
     """
     connection = None
     try:
@@ -74,6 +94,13 @@ def create_tables():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS aws_regions (
+                region_id SERIAL PRIMARY KEY,
+                region_name VARCHAR(100) UNIQUE NOT NULL,
+                region_description VARCHAR(255)
+            );
             """
         ]
 
@@ -84,6 +111,9 @@ def create_tables():
         # Commit the transaction to apply changes
         connection.commit()
         logging.info("Tables created successfully.")
+
+        # Initialize AWS regions after creating the tables
+        initialize_aws_regions(connection)
 
     except Exception as e:
         logging.error(f"Error creating tables: {e}")
@@ -104,6 +134,30 @@ def get_db_connection():
         password=DATABASE_CONFIG['password'],
         database=DATABASE_CONFIG['database']
     )
+
+def initialize_aws_regions(connection):
+    """
+    Function to initialize AWS regions in the `aws_regions` table.
+    """
+    try:
+        cursor = connection.cursor()
+
+        # Insert regions into the aws_regions table if they don't already exist
+        insert_query = """
+        INSERT INTO aws_regions (region_name, region_description)
+        VALUES (%s, %s) ON CONFLICT (region_name) DO NOTHING;
+        """
+        cursor.executemany(insert_query, AWS_REGIONS)
+
+        # Commit the transaction
+        connection.commit()
+        logger.info("AWS regions initialized successfully.")
+    except Exception as e:
+        logging.error(f"Error initializing AWS regions: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
 
 def get_aws_credentials():
     """
@@ -131,6 +185,7 @@ def get_aws_credentials():
         if connection:
             connection.close()
 
+
 def add_user_to_db(username, email):
     """
     Add a new user with the provided username and email to the users table.
@@ -151,6 +206,7 @@ def add_user_to_db(username, email):
         connection.rollback()  # Rollback in case of error
     finally:
         connection.close()
+
 
 def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key, region):
     """
@@ -176,6 +232,7 @@ def encrypt_and_store_aws_credentials(user_id, access_key_id, secret_access_key,
         connection.rollback()
     finally:
         connection.close()
+
 
 def aws_account_exists(user_id, access_key_id):
     """
@@ -206,28 +263,42 @@ def aws_account_exists(user_id, access_key_id):
     finally:
         connection.close()
 
+
 def get_username_from_token(token):
     """
     Extract the username (or user identifier) from the JWT token.
     """
-    logging.info(f"Loaded and decoded SECRET_KEY: {SECRET_KEY}")  # For debugging; remove in production
     if not token:
         logging.error("No token provided")
         return None
 
+    # Ensure token is in the format "Bearer <token>"
+    if not token.startswith("Bearer "):
+        logging.error("Invalid token format")
+        return None
     try:
-        logging.info(f"Token received: {token}")
+        # Extract the token part after "Bearer "
+        token = token.split(" ")[1]
 
-        # Decode the token using the decoded secret key and HS256 algorithm
-        payload = jwt.decode(token.split(" ")[1], SECRET_KEY, algorithms=["HS256"])
-        logging.info(f"Decoded payload: {payload}")
-        return payload['sub']  # Adjust according to your token structure
+        # Decode the token using the SECRET_KEY and specified algorithm
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+
+        # Optionally, log the fact that decoding was successful
+        logging.info("Token decoded successfully")
+
+        # Return the username or user identifier from the payload
+        return payload.get('sub')  # Adjust according to your token structure
+
     except jwt.ExpiredSignatureError:
-        logging.error("Token has expired")
+        logging.warning("Token has expired")
         return None
     except jwt.InvalidTokenError as e:
-        logging.error(f"Invalid token: {e}")
+        logging.warning(f"Invalid token: {e}")
         return None
+    except Exception as e:
+        logging.error(f"An error occurred while decoding token: {e}")
+        return None
+
 
 def get_user_id_from_username(username):
     """
@@ -282,8 +353,9 @@ def get_cloud_accounts_by_user(user_id):
             azure_accounts = cursor.fetchall()
 
             # Combine all accounts into a single list
-            all_accounts = decrypted_aws_accounts + [{'cloud_name': row[0], 'project_id': row[1]} for row in gcp_accounts] \
-                + [{'cloud_name': row[0], 'client_id': row[1]} for row in azure_accounts]
+            all_accounts = decrypted_aws_accounts + [{'cloud_name': row[0], 'project_id': row[1]} for row in
+                                                     gcp_accounts] \
+                           + [{'cloud_name': row[0], 'client_id': row[1]} for row in azure_accounts]
 
             return all_accounts
 

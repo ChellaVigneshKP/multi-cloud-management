@@ -1,6 +1,5 @@
 import boto3
 from db import get_aws_credentials
-from config import AWS_REGIONS
 import logging
 
 

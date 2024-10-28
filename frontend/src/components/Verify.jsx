@@ -8,8 +8,7 @@ import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import axios from 'axios';
-
+import api from '../api';
 const theme = createTheme({
   palette: {
     primary: {
@@ -42,7 +41,7 @@ export default function Verify() {
 
     setLoading(true); // Set loading to true when the request starts
 
-    axios.post('http://localhost:6060/auth/verify', { email, verificationCode })
+    api.post('/auth/verify', { email, verificationCode })
       .then(res => {
         setMessage('Verification successful! Redirecting to login...');
         setError('');
@@ -72,7 +71,7 @@ export default function Verify() {
   const handleResendCode = () => {
     setResending(true); // Set resending to true when the request starts
   
-    axios.post('http://localhost:6060/auth/resend', { email }) // Send email in the request body
+    api.post('/auth/resend', { email }) // Send email in the request body
       .then(() => {
         setMessage('Verification code resent. Please check your email.');
         setError('');

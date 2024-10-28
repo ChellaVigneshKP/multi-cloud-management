@@ -8,6 +8,8 @@ spring:
           uri: lb://AUTH-SERVICE
           predicates:
             - Path=/auth/**
+          filters:
+            - AuthenticationFilter
         - id: vm-service
           uri: lb://VM-SERVICE
           predicates:
@@ -17,7 +19,10 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowed-origins: "http://localhost:3000"
+            allowed-origins:
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+              - "http://192.168.1.12:3000"
             allowed-methods: "*"
             allowed-headers: "*"
             allow-credentials: true

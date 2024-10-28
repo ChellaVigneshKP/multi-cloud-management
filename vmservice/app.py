@@ -38,4 +38,4 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, cleanup)
 
     # Run the Flask app, listening on all available IP addresses on port 5000
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='localhost', port=5000)

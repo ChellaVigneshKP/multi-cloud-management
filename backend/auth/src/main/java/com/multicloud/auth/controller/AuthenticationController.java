@@ -1,108 +1,307 @@
 package com.multicloud.auth.controller;
 
-import com.multicloud.auth.dto.LoginUserDto;
-import com.multicloud.auth.dto.RegisterUserDto;
-import com.multicloud.auth.dto.VerifyUserDto;
-import com.multicloud.auth.exception.AccountNotVerifiedException;
-import com.multicloud.auth.exception.EmailAlreadyRegisteredException;
-import com.multicloud.auth.exception.UsernameAlreadyExistsException;
-import com.multicloud.auth.exception.UsernameNotFoundException;
+import com.multicloud.auth.dto.*;
+import com.multicloud.auth.exception.*;
+import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
+import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.responses.LoginResponse;
 import com.multicloud.auth.service.AuthenticationService;
-import com.multicloud.auth.service.JwtService;
+import com.multicloud.auth.service.ForgotPasswordService;
+import com.multicloud.auth.service.JweService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import com.multicloud.auth.responses.ErrorResponse;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.ZoneId;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RequestMapping("/auth")  // Base URL for authentication-related endpoints
 @RestController  // Indicates that this class serves RESTful web services
 public class AuthenticationController {
-    private final JwtService jwtService;  // Service for handling JWT operations
+    private static final Logger logger = LoggerFactory.getLogger(AuthenticationController.class);
+    private final JweService jweService;
     private final AuthenticationService authenticationService;  // Service for authentication-related tasks
 
-    public AuthenticationController(JwtService jwtService, AuthenticationService authenticationService) {
-        this.jwtService = jwtService;
+    @Autowired
+    private ForgotPasswordService forgotPasswordService;
+    @Autowired
+    private HttpServletRequest request;
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    public AuthenticationController(JweService jweService, AuthenticationService authenticationService) {
+        this.jweService = jweService;
         this.authenticationService = authenticationService;
     }
 
-    // Endpoint for user registration
+    @Operation(summary = "User registration", description = "Register a new user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Username or Email already exists",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/signup")
     public ResponseEntity<?> register(@RequestBody RegisterUserDto registerUserDto) {
         try {
-            authenticationService.signup(registerUserDto);  // Attempt to sign up the user
-            return ResponseEntity.ok("Please Verify Your email: " + registerUserDto.getEmail());  // Inform user to verify email
+            authenticationService.signup(registerUserDto);
+            logger.info("User Registered Successfully with Username: {}", registerUserDto.getUsername());
+            return ResponseEntity.ok("Please Verify Your email: " + registerUserDto.getEmail());
         } catch (UsernameAlreadyExistsException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Username already exists"));  // Handle existing username
+            return ResponseEntity.badRequest().body(new ErrorResponse("Username already exists"));
         } catch (EmailAlreadyRegisteredException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Email already registered"));  // Handle existing email
+            return ResponseEntity.badRequest().body(new ErrorResponse("Email already registered"));
         }
     }
 
-    // Endpoint for user login
+    @Operation(summary = "User login", description = "Authenticate an existing user and generate a JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User authenticated successfully"),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Account not verified",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid email or password",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto) {
+    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
         try {
-            User authenticatedUser = authenticationService.authenticate(loginUserDto);  // Authenticate the user
-            String jwtToken = jwtService.generateToken(authenticatedUser);  // Generate JWT token for the authenticated user
-            LoginResponse loginResponse = new LoginResponse(jwtToken, jwtService.getExpirationTime());  // Create login response
-            return ResponseEntity.ok(loginResponse);  // Return the login response
+            final String UNKNOWN_IP = "Unknown";  // Define a constant for "Unknown"
+            String clientIpv4 = request.getHeader("X-User-IP");
+            String clientIpv6 = request.getHeader("X-User-IP-V6");
+            String clientIp = UNKNOWN_IP;
+            if (!UNKNOWN_IP.equals(clientIpv4)) {
+                clientIp = clientIpv4;  // Prefer IPv4 if it's available and not "Unknown"
+            } else if (!UNKNOWN_IP.equals(clientIpv6)) {
+                clientIp = clientIpv6;  // Fallback to IPv6 if IPv4 is "Unknown"
+            }
+            User authenticatedUser = authenticationService.authenticate(loginUserDto, userAgent, clientIp);
+            String jweToken = jweService.generateToken(authenticatedUser);
+            Optional<RefreshToken> refreshTokenOpt = refreshTokenRepository.findByUserAndVisitorId(authenticatedUser, loginUserDto.getVisitorId());
+            if (refreshTokenOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Refresh token generation failed"));
+            }
+            String refreshToken = refreshTokenOpt.get().getToken();
+            long refreshTokenExpiry = refreshTokenOpt.get().getExpiryDate().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();  // Convert LocalDateTime to epoch milliseconds
+            logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
+            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime(),refreshToken,refreshTokenExpiry);
+            return ResponseEntity.ok(loginResponse);
         } catch (UsernameNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));  // Handle user not found
+            logger.error("User not found: {}", loginUserDto.getEmail());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
         } catch (AccountNotVerifiedException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(e.getMessage()));  // Handle unverified account
+            logger.error("Account not verified for user: {}", loginUserDto.getEmail());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(e.getMessage()));
+        } catch (BadCredentialsException e) {
+            logger.error("Invalid credentials for user: {}", loginUserDto.getEmail());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid email or password"));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("An unexpected error occurred"));  // Handle unexpected errors
+            logger.error("An unexpected error occurred during login", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("An unexpected error occurred"));
         }
     }
 
-    // Endpoint for verifying user accounts
+    @Operation(summary = "Verify user account", description = "Verify a user's email using a verification code")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Account verified successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid verification request",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/verify")
     public ResponseEntity<?> verifyUser(@RequestBody VerifyUserDto verifyUserDto) {
         try {
-            authenticationService.verifyUser(verifyUserDto);  // Verify the user account
-            return ResponseEntity.ok("Account verified successfully");  // Inform user of successful verification
+            authenticationService.verifyUser(verifyUserDto);
+            logger.info("User Verified Successfully with Email ID: {}", verifyUserDto.getEmail());
+            return ResponseEntity.ok("Account verified successfully");
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Collections.singletonMap("message", e.getMessage()));  // Handle verification errors
+            logger.error("Bad Request");
+            return ResponseEntity.badRequest().body(Collections.singletonMap("message", e.getMessage()));
         }
     }
 
-    // Endpoint for resending verification codes
+    @Operation(summary = "Resend verification code", description = "Resend the email verification code")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Verification code resent successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request",
+                    content = @Content(mediaType = "application/json"))
+    })
     @PostMapping("/resend")
     public ResponseEntity<?> resendVerificationCode(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");  // Extract email from the request payload
+        String email = payload.get("email");
         try {
-            authenticationService.resendVerificationCode(email);  // Resend the verification code
-            return ResponseEntity.ok("Verification code sent");  // Confirm that the code was sent
+            authenticationService.resendVerificationCode(email);
+            logger.debug("Verification code sent to {}", email);
+            return ResponseEntity.ok("Verification code sent");
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());  // Handle errors in resending
+            logger.error("Bad Request");
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // Endpoint for validating JWT tokens
+    @Operation(summary = "Validate JWT token", description = "Validate the provided JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token is valid"),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired token",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/validate-token")
     public ResponseEntity<?> validateToken(@RequestBody Map<String, String> payload) {
-        String token = payload.get("token");  // Extract token from the request payload
-
-        // Check if token is provided
+        String token = payload.get("token");
         if (token == null || token.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Token is required"));  // Return error if token is missing
+            logger.error("Token is required");
+            return ResponseEntity.badRequest().body(new ErrorResponse("Token is required"));
         }
 
         try {
-            String username = jwtService.extractUsername(token);  // Extract username from the token
-            User user = authenticationService.loadUserByUsername(username);  // Load the user by username
-            if (jwtService.isTokenValid(token, user)) {  // Validate the token
-                return ResponseEntity.ok(Collections.singletonMap("message", "Token is valid"));  // Confirm token validity
+            String username = jweService.extractUsername(token);
+            User user = authenticationService.loadUserByUsername(username);
+            if (jweService.isTokenValid(token, user)) {
+                logger.info("Token is Valid for User: {}", user.getUsername());
+                return ResponseEntity.ok(Collections.singletonMap("message", "Token is valid"));
             } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid or expired token"));  // Handle invalid token
+                logger.error("Invalid or expired token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid or expired token"));
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid or malformed token"));  // Handle token errors
+            logger.error("Invalid or malformed token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("Invalid or malformed token"));
         }
+    }
+
+    @Operation(summary = "Get user info", description = "Retrieve user info from the request headers")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User info retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized: User information missing",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/userinfo")
+    public ResponseEntity<?> getUserInfo(
+            @RequestHeader("X-User-Name") String username,
+            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("X-User-Id") String userId) {
+        if (username == null || email == null || userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("User information is missing in the request headers"));
+        }
+        Map<String, String> userInfo = new HashMap<>();
+        userInfo.put("username", username);
+        userInfo.put("email", email);
+        userInfo.put("userId", userId);
+        logger.info("UserInfo requested for User ID: {}", userId);
+        return ResponseEntity.ok(userInfo);
+    }
+
+    @Operation(summary = "Forgot password", description = "Request password reset link")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset link sent successfully")
+    })
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        logger.info("Received forgot password request for email: {}", request.getEmail());
+        try {
+            forgotPasswordService.processForgotPassword(request.getEmail());
+            return ResponseEntity.ok(new SuccessResponse("A reset link has been sent to email " + request.getEmail() + ". If the email is registered."));
+        } catch (IllegalArgumentException e) {
+            logger.error("Error processing mail for Forget Password with Mail Id: {}", request.getEmail());
+            return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to email " + request.getEmail() + ". If the email is registered."));
+        }
+    }
+    @Operation(summary = "Request a reset password link", description = "Trigger sending of a password reset link for the given email address.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset link sent successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SuccessResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid email format",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Server error",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/take-action")
+    public ResponseEntity<?> takeAction(@Valid @RequestBody ForgotPasswordRequest request) {
+        logger.info("Received Change password request for email: {}", request.getEmail());
+        try {
+            forgotPasswordService.processForgotPassword(request.getEmail());
+            return ResponseEntity.ok(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
+        } catch (IllegalArgumentException e) {
+            logger.error("Error processing mail for Change Password with Mail Id: {}", request.getEmail());
+            return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
+        }
+    }
+
+    @Operation(summary = "Reset password", description = "Reset user password using a reset token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid password reset token",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request",
+                    content = @Content(mediaType = "application/json"))
+    })
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        logger.debug("Received reset password request");
+        try {
+            forgotPasswordService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(new SuccessResponse("Password has been reset successfully."));
+        } catch (InvalidPasswordResetTokenException e) {
+            logger.error("Error resetting password: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            logger.error("Error resetting password: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @Operation(summary = "Refresh JWT token", description = "Generate new JWT and refresh tokens using an existing refresh token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request - refresh token is required",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - refresh token is invalid or expired",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> payload) {
+        String refreshToken = payload.get("refreshToken");
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            return ResponseEntity.badRequest().body("Refresh Token is required");
+        }
+        // Validate the refresh token and user association
+        RefreshToken currentRefreshToken = authenticationService.getRefreshToken(refreshToken);
+        if (currentRefreshToken == null || currentRefreshToken.isExpired()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired refresh token");
+        }
+        User user = currentRefreshToken.getUser();
+        Map<String, String> tokens = authenticationService.refreshTokens(user, refreshToken);
+        logger.info("Token refreshed successfully for User: {}", user.getUsername());
+        return ResponseEntity.ok(tokens);
+    }
+    @Operation(summary = "Logout user", description = "Log out the user by invalidating the refresh token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Logged out successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request - refresh token missing",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody Map<String, String> payload) {
+        String refreshToken = payload.get("token");
+        authenticationService.logout(refreshToken);
+        logger.info("User with refresh token {} logged out successfully", refreshToken);
+        return ResponseEntity.ok("Logged out successfully");
     }
 }
