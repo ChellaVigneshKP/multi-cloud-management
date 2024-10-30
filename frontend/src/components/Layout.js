@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useCallback } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -48,9 +48,23 @@ const Layout = ({ children }) => {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [avatarLetter, setAvatarLetter] = useState('');
+  const [avatarColor, setAvatarColor] = useState('');
   const theme = useTheme();
   const navigate = useNavigate();
-
+  const getColorFromUsername = useCallback((username) => {
+    const colors = [
+      '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+      '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
+      '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800',
+      '#FF5722', '#795548', '#A335AB', '#607D8B'
+    ];
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash % colors.length);
+    return colors[index];
+  }, []);
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -69,6 +83,7 @@ const Layout = ({ children }) => {
         setUserName(username);
         setUserEmail(email);
         setAvatarLetter(username.charAt(0).toUpperCase());
+        setAvatarColor(getColorFromUsername(username));
       } catch (error) {
         console.error('Error fetching user data:', error);
         navigate('/login');
@@ -76,7 +91,7 @@ const Layout = ({ children }) => {
     };
 
     fetchUserData();
-  }, [navigate]);
+  }, [navigate, getColorFromUsername]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -98,7 +113,6 @@ const Layout = ({ children }) => {
   const handleLogoutDialogClose = () => {
     setLogoutDialogOpen(false);
   };
-
   const handleLogoutConfirm = async () => {
     try {
       // **Call the /auth/logout API**
@@ -201,7 +215,7 @@ const Layout = ({ children }) => {
             aria-label="Open Account Menu"
             size="large"
           >
-            <Avatar sx={{ bgcolor: theme.palette.secondary.main }} aria-label="User Avatar">
+            <Avatar sx={{ bgcolor: avatarColor }} aria-label="User Avatar">
               {avatarLetter}
             </Avatar>
           </IconButton>
@@ -287,14 +301,25 @@ const Layout = ({ children }) => {
           {/* Spacer to push content to the bottom */}
           <Box sx={{ flexGrow: 1 }} />
           {/* Footer */}
-          <Box sx={{ p: 2 }}>
-            <Typography variant="body2" color="textSecondary" align="center">
-              {'Copyright © '}
-              <MuiLink color="inherit" href="https://chellavignesh.com/">
-                chellavignesh.com
-              </MuiLink>{' '}
-              {new Date().getFullYear()}.
-            </Typography>
+          <Box sx={{ p: 2, backgroundColor: theme.palette.grey[100] }}>
+            <Box display="flex" flexDirection="column" alignItems="center">
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                align="center"
+                sx={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center' }}
+              >
+                <span style={{ marginRight: 4 }}>©</span>
+                {' '}
+                {new Date().getFullYear()}
+                <MuiLink color="primary" href="https://chellavignesh.com/" underline="hover" sx={{ fontWeight: 'bold', ml: 0.5 }}>
+                  chellavignesh.com
+                </MuiLink>
+              </Typography>
+              <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5 }}>
+                Empowering Cloud Management
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </Drawer>
@@ -310,7 +335,7 @@ const Layout = ({ children }) => {
       >
         {/* Enhanced Profile Menu */}
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: theme.palette.secondary.main, mr: 2 }} aria-hidden="true">
+          <Avatar sx={{ bgcolor: avatarColor, mr: 2 }} aria-hidden="true">
             {avatarLetter}
           </Avatar>
           <Box>
