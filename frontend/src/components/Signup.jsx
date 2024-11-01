@@ -6,25 +6,21 @@ import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import CircularProgress from '@mui/material/CircularProgress';
 import api from '../api';
+
 const theme = createTheme({
   palette: {
-    primary: {
-      main: '#B45C39', // Sunset orange
-    },
-    secondary: {
-      main: '#231F21', // Sunset yellow
-    },
+    primary: { main: '#B45C39' }, // Sunset orange
+    secondary: { main: '#231F21' }, // Sunset yellow
   },
 });
 
-// Basic email regex pattern
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Copyright(props) {
@@ -49,8 +45,8 @@ export default function SignUpSide() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [touchedEmail, setTouchedEmail] = useState(false); // Track if email field is touched
+  const [loading, setLoading] = useState(false);
+  const [touchedEmail, setTouchedEmail] = useState(false);
 
   const navigate = useNavigate();
 
@@ -82,17 +78,13 @@ export default function SignUpSide() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     const formData = { firstName, lastName, username, email, password };
-
-    setLoading(true); // Set loading to true when the request starts
+    setLoading(true);
 
     api.post('/auth/signup', formData)
       .then(res => {
-        console.log(res);
         setSuccess('Sign Up successful! Please verify your email.');
         setError('');
         setTimeout(() => {
@@ -101,44 +93,36 @@ export default function SignUpSide() {
       })
       .catch(err => {
         setLoading(false);
-        if (err.response && err.response.data) {
-          const errorMessage = err.response.data.message || 'An error occurred. Please try again.';
-          setError(errorMessage);
-        } else {
-          setError('An error occurred. Please try again.');
-        }
+        const errorMessage = err.response?.data?.message || 'An error occurred. Please try again.';
+        setError(errorMessage);
       });
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <Grid container component="main" sx={{ height: '100vh', overflow: 'hidden' }}>
+      <Grid container sx={{ height: '100vh' }}>
         <CssBaseline />
-        {/* Background Image */}
         <Grid
-          item
-          xs={false}
-          sm={4}
-          md={7}
+          size={{ xs: 0, sm: 4, md: 7 }}
           sx={{
             backgroundImage: 'url("images/output.jpg")',
             backgroundColor: (t) => t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            position: 'relative',
-            display: { xs: 'none', sm: 'block' }, // Hide background image on small screens
+            display: { xs: 'none', sm: 'block' },
           }}
         />
-        {/* Form Container */}
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square
+        <Grid
+          size={{ xs: 12, sm: 8, md: 5 }}
+          component={Paper}
+          elevation={6}
+          square
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
+            justifyContent: 'space-between', // Footer positioning
             overflowY: 'auto',
             maxHeight: '100vh',
-            padding: { xs: 2, sm: 4 },
-            boxSizing: 'border-box',
           }}
         >
           <Box
@@ -172,8 +156,8 @@ export default function SignUpSide() {
                   {success}
                 </Typography>
               )}
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+              <Grid container rowSpacing={2} columnSpacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     margin="normal"
                     required
@@ -187,7 +171,7 @@ export default function SignUpSide() {
                     onChange={(e) => setFirstName(e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     margin="normal"
                     required
@@ -222,7 +206,7 @@ export default function SignUpSide() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => setTouchedEmail(true)} // Set touchedEmail to true when email field is blurred
+                onBlur={() => setTouchedEmail(true)}
                 helperText={touchedEmail && !emailPattern.test(email) && "Invalid email address."}
                 error={touchedEmail && !emailPattern.test(email)}
               />
@@ -255,19 +239,22 @@ export default function SignUpSide() {
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
-                disabled={loading} // Disable button when loading
+                disabled={loading}
               >
                 Sign Up
               </Button>
               <Grid container justifyContent="flex-end">
-                <Grid item>
+                <Grid size="auto">
                   <Link href="/login" variant="body2">
                     Already have an account? Sign In
                   </Link>
                 </Grid>
               </Grid>
-              <Copyright sx={{ mt: 5 }} />
             </Box>
+          </Box>
+          {/* Footer Section */}
+          <Box sx={{ py: 2, textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+            <Copyright />
           </Box>
         </Grid>
       </Grid>

@@ -6,26 +6,25 @@ import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api'; // Ensure this is correctly set up
+import api from '../api';
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#B45C39', // Sunset orange
+      main: '#B45C39',
     },
     secondary: {
-      main: '#231F21', // Sunset yellow
+      main: '#231F21',
     },
   },
 });
 
-// Helper hook to parse query parameters
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -49,24 +48,21 @@ export default function ChangePassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false); // Loading state
-  const [countdown, setCountdown] = useState(10); // Countdown state
-  const isMounted = useRef(true); // To track mounted state
+  const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  // Extract email from URL query parameters
   useEffect(() => {
     const emailParam = query.get('email') || '';
     setEmail(emailParam);
   }, [query]);
 
-  // Countdown logic for redirection
   useEffect(() => {
     if (countdown > 0 && success) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -97,7 +93,7 @@ export default function ChangePassword() {
       return;
     }
 
-    setLoading(true); // Show loading spinner
+    setLoading(true);
     setError('');
     setSuccess('');
 
@@ -105,50 +101,46 @@ export default function ChangePassword() {
       const response = await api.post('/auth/take-action', { email });
 
       if (response.status === 200) {
-        // Success, set the success message and start countdown
         setSuccess(response.data.message);
         setError('');
         setLoading(false);
-        setCountdown(10); // Start countdown for redirect
+        setCountdown(10);
       } else {
-        // Handle non-200 status codes
         throw new Error(response.data.message || 'An error occurred. Please try again.');
       }
     } catch (error) {
       console.error('Error:', error);
       setError(error.response?.data?.message || error.message || 'Failed to send reset link. Please try again.');
-      setLoading(false); // Re-enable the button if error
+      setLoading(false);
     }
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <Grid container component="main" sx={{ height: '100vh' }}>
+      <Grid container sx={{ height: '100vh' }}>
         <CssBaseline />
         {/* Left side image */}
         <Grid
-          item
-          xs={false}
-          sm={4}
-          md={7}
+          size={{ xs: 0, sm: 4, md: 7 }}
           sx={{
             backgroundImage: 'url("images/output.jpg")',
             backgroundColor: (t) =>
               t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
+            display: { xs: 'none', sm: 'block' },
           }}
         />
         {/* Right side form */}
         <Grid
-          item
-          xs={12}
-          sm={8}
-          md={5}
+          size={{ xs: 12, sm: 8, md: 5 }}
           component={Paper}
           elevation={6}
           square
           sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between', // Pushes copyright to bottom
             backdropFilter: 'blur(10px)',
             backgroundColor: 'rgba(255, 255, 255, 0.7)',
           }}
@@ -199,7 +191,7 @@ export default function ChangePassword() {
                   autoFocus
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled // Make the email field read-only
+                  disabled
                 />
               )}
               {!success && (
@@ -231,15 +223,18 @@ export default function ChangePassword() {
                   )}
                 </Button>
               )}
-              <Grid container>
-                <Grid item xs>
+              <Grid container gap={1} justifyContent="center">
+                <Grid size="auto">
                   <Link href="/login" variant="body2">
                     Back to Login
                   </Link>
                 </Grid>
               </Grid>
-              <Copyright sx={{ mt: 5 }} />
             </Box>
+          </Box>
+          {/* Footer Section */}
+          <Box sx={{ py: 2, textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+            <Copyright />
           </Box>
         </Grid>
       </Grid>
