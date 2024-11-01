@@ -1,14 +1,17 @@
 package com.multicloud.auth.controller;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.multicloud.auth.dto.*;
 import com.multicloud.auth.exception.*;
 import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.responses.LoginResponse;
+import com.multicloud.auth.responses.TokenResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;
+import com.multicloud.auth.view.Views;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,12 +22,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import com.multicloud.auth.responses.ErrorResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -98,10 +106,17 @@ public class AuthenticationController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Refresh token generation failed"));
             }
             String refreshToken = refreshTokenOpt.get().getToken();
-            long refreshTokenExpiry = refreshTokenOpt.get().getExpiryDate().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();  // Convert LocalDateTime to epoch milliseconds
+            Duration refreshTokenExpiry = loginUserDto.isRemember() ? Duration.ofDays(30) : Duration.ofDays(7);
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
+                    .httpOnly(true)
+                    .secure(true)  // Set to true in production if using HTTPS
+                    .path("/")
+                    .maxAge(refreshTokenExpiry)  // Set appropriate expiry
+                    .sameSite("None")  // Consider 'Lax' or 'None' if cross-origin is necessary
+                    .build();
             logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
-            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime(),refreshToken,refreshTokenExpiry);
-            return ResponseEntity.ok(loginResponse);
+            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime());
+            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString()).body(loginResponse);
         } catch (UsernameNotFoundException e) {
             logger.error("User not found: {}", loginUserDto.getEmail());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
@@ -275,20 +290,40 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> payload) {
-        String refreshToken = payload.get("refreshToken");
-        if (refreshToken == null || refreshToken.isEmpty()) {
-            return ResponseEntity.badRequest().body("Refresh Token is required");
+    @JsonView(Views.Public.class)
+    public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
+        try{
+            logger.debug("Received refresh token: {}", refreshToken);
+            RefreshToken currentRefreshToken = authenticationService.getRefreshToken(refreshToken);
+            User user = currentRefreshToken.getUser();
+            TokenResponse tokens = authenticationService.refreshTokens(user, refreshToken);
+            Duration remainingDuration = Duration.between(LocalDateTime.now(),
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(tokens.refreshTokenExpiry()), ZoneId.systemDefault()));
+            long maxAgeSeconds = remainingDuration.getSeconds();
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.refreshToken())
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/")
+                    .maxAge(maxAgeSeconds)
+                    .sameSite("None")
+                    .build();
+            logger.info("Token refreshed successfully for User: {}", user.getUsername());
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                    .body(tokens);
+        } catch (InvalidRefreshTokenException | TokenNotFoundException e) {
+            ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/")
+                    .maxAge(0)  // Setting maxAge to 0 deletes the cookie
+                    .sameSite("None")
+                    .build();
+            logger.error("Token validation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                    .body("Invalid or expired refresh token");
         }
-        // Validate the refresh token and user association
-        RefreshToken currentRefreshToken = authenticationService.getRefreshToken(refreshToken);
-        if (currentRefreshToken == null || currentRefreshToken.isExpired()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired refresh token");
-        }
-        User user = currentRefreshToken.getUser();
-        Map<String, String> tokens = authenticationService.refreshTokens(user, refreshToken);
-        logger.info("Token refreshed successfully for User: {}", user.getUsername());
-        return ResponseEntity.ok(tokens);
     }
     @Operation(summary = "Logout user", description = "Log out the user by invalidating the refresh token")
     @ApiResponses(value = {
@@ -298,10 +333,16 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody Map<String, String> payload) {
-        String refreshToken = payload.get("token");
-        authenticationService.logout(refreshToken);
+    public ResponseEntity<?> logout(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Refresh token is missing");
+        }
+        authenticationService.logout(refreshToken); // Process logout with the refresh token
         logger.info("User with refresh token {} logged out successfully", refreshToken);
-        return ResponseEntity.ok("Logged out successfully");
+
+        // Optionally, set the refresh token cookie to expire immediately
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.SET_COOKIE, "refreshToken=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure");
+        return ResponseEntity.ok().headers(headers).body("Logged out successfully");
     }
 }

@@ -7,7 +7,6 @@ import { DataGrid } from '@mui/x-data-grid';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Layout from './Layout';
-import Cookies from 'js-cookie';
 import api from '../api';
 import noVmsImage from '../assets/images/avatars/vm-not-found.png'
 import vmLoading from '../assets/images/avatars/cloud-hosting-animate.svg'
@@ -25,29 +24,16 @@ const VMs = () => {
 
   const fetchInstances = async () => {
     setLoading(true);
-    const apiToken = Cookies.get('apiToken');
-    if (!apiToken) {
-      console.error('API Token is missing');
-      setLoading(false);
-      return;
-    }
     try {
-      const response = await fetch(`${api.defaults.baseURL}/vm/aws/ec2`, {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch instances');
-      }
-      const data = await response.json();
+      const response = await api.get('/vm/aws/ec2');
+      const data = response.data;
       setInstances(data.instances || []);
     } catch (error) {
       console.error('Error fetching instances:', error);
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   useEffect(() => {
     fetchInstances();

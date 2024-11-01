@@ -8,6 +8,7 @@ import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.repository.UserRepository;
+import com.multicloud.auth.responses.TokenResponse;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,14 +102,15 @@ public class AuthenticationService {
         String deviceInfo = parsedUserAgent[2]+":"+parsedUserAgent[1]+":"+parsedUserAgent[0];
         boolean isNewVisitorIdWithNewIp = refreshTokenRepository.findByUser(user).stream()
                 .noneMatch(token -> Objects.equals(token.getVisitorId(), visitorId) || Objects.equals(token.getIpAddress(), clientIp));
+        LocalDateTime expiryDate = input.isRemember() ? LocalDateTime.now().plusDays(30) : LocalDateTime.now().plusDays(7);
         if (existingTokenOpt.isPresent()) {
             RefreshToken existingToken = existingTokenOpt.get();
             existingToken.setToken(refreshTokenValue);  // Update the token value
-            existingToken.setExpiryDate(LocalDateTime.now().plusDays(1)); // Update expiry date
+            existingToken.setExpiryDate(expiryDate); // Update expiry date
             existingToken.setIpAddress(clientIp);
             refreshTokenRepository.save(existingToken); // Save the updated token
         } else {
-            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, LocalDateTime.now().plusDays(1), deviceInfo, clientIp, visitorId);
+            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, expiryDate, deviceInfo, clientIp, visitorId);
             refreshTokenRepository.save(refreshToken);
             if (isNewVisitorIdWithNewIp) {
                 // Trigger email only if both visitor ID and IP are new
@@ -125,26 +127,21 @@ public class AuthenticationService {
         return refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new TokenNotFoundException("Refresh token not found"));
     }
-    public synchronized Map<String, String> refreshTokens(User user, String oldRefreshToken) {
-        Optional<RefreshToken> currentRefreshToken = refreshTokenRepository.findByToken(oldRefreshToken);
-        if (currentRefreshToken.isEmpty() || currentRefreshToken.get().isExpired()) {
-            throw new InvalidRefreshTokenException("Old refresh token not found or expired");
+    public synchronized TokenResponse refreshTokens(User user, String oldRefreshToken) {
+        RefreshToken currentRefreshToken = getRefreshToken(oldRefreshToken);
+        if (currentRefreshToken.isExpired()) {
+            throw new InvalidRefreshTokenException("Old refresh or access token expired");
         }
         String newAccessToken = jweService.generateToken(user);
         String newRefreshTokenValue;
         do {
             newRefreshTokenValue = UUID.randomUUID().toString();
         } while (refreshTokenRepository.existsByToken(newRefreshTokenValue));
-        LocalDateTime newExpiryDate = LocalDateTime.now().plusDays(7);
-        RefreshToken refreshToken = currentRefreshToken.get();
-        refreshToken.setToken(newRefreshTokenValue);
-        refreshToken.setExpiryDate(newExpiryDate);
-        refreshTokenRepository.save(refreshToken);  // Save the updated token record
-        Map<String, String> tokenMap = new HashMap<>();
-        tokenMap.put("accessToken", newAccessToken);
-        tokenMap.put("refreshToken", newRefreshTokenValue);
-        tokenMap.put("refreshTokenExpiry", String.valueOf(newExpiryDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
-        return tokenMap;
+        LocalDateTime expiryDate = currentRefreshToken.getExpiryDate();
+        currentRefreshToken.setToken(newRefreshTokenValue);
+        refreshTokenRepository.save(currentRefreshToken);
+        return new TokenResponse(newAccessToken, newRefreshTokenValue,
+                expiryDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
     }
 
     public void logout(String token) {

@@ -10,10 +10,8 @@ public class LoginResponse {
     private long expiresIn;
     private String refreshToken;
     private long refreshTokenExpiry;
-    public LoginResponse(String token, long expiresIn, String refreshToken, long refreshTokenExpiry) {
+    public LoginResponse(String token, long expiresIn) {
         this.jwtToken = token;
         this.expiresIn = expiresIn;
-        this.refreshToken = refreshToken;
-        this.refreshTokenExpiry = refreshTokenExpiry;
     }
 }

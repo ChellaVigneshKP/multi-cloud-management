@@ -36,8 +36,8 @@ import {
   NotificationImportant as NotificationImportantIcon,
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie';
-import api from '../api';
+
+import api,{clearAccessToken} from '../api';
 
 const drawerWidth = 240;
 
@@ -68,17 +68,8 @@ const Layout = ({ children }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const apiToken = Cookies.get('apiToken');
-        if (!apiToken) {
-          console.error('API Token is missing');
-          navigate('/login');
-          return;
-        }
-        const response = await api.get('/auth/userinfo', {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-          },
-        });
+        // No need to get the apiToken from cookies
+        const response = await api.get('/auth/userinfo');
         const { username, email } = response.data;
         setUserName(username);
         setUserEmail(email);
@@ -89,9 +80,9 @@ const Layout = ({ children }) => {
         navigate('/login');
       }
     };
-
+  
     fetchUserData();
-  }, [navigate, getColorFromUsername]);
+  }, [navigate, getColorFromUsername]);  
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -115,16 +106,10 @@ const Layout = ({ children }) => {
   };
   const handleLogoutConfirm = async () => {
     try {
-      // **Call the /auth/logout API**
-      const refreshToken = Cookies.get('refreshToken');
-      await api.post('/auth/logout', { token: refreshToken }, {
-        headers: { 'Content-Type': 'application/json' },
-        withCredentials: true,
-      });
-
-      // **Clear tokens and navigate to login**
-      Cookies.remove('apiToken');
-      Cookies.remove('refreshToken');
+      await api.post('/auth/logout', {}, { withCredentials: true }); // Ensure refresh token is included
+  
+      // Clear access token and redirect to login
+      clearAccessToken();
       localStorage.clear();
       navigate('/login');
     } catch (error) {
@@ -132,6 +117,16 @@ const Layout = ({ children }) => {
     } finally {
       setLogoutDialogOpen(false);
     }
+  };  
+
+  const handleProfileClick = () => {
+    handleMenuClose();
+    navigate('/profile'); // This will navigate to the profile page
+  };
+
+  const handleSettingsClick = () => {
+    handleMenuClose();
+    navigate('/settings'); // This will navigate to the settings page
   };
 
   return (
@@ -346,11 +341,11 @@ const Layout = ({ children }) => {
           </Box>
         </Box>
         <Divider />
-        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Profile">
+        <MenuItem onClick={handleProfileClick} aria-label="Navigate to Profile">
           <PersonIcon sx={{ mr: 1 }} aria-hidden="true" />
           Profile
         </MenuItem>
-        <MenuItem onClick={handleMenuClose} aria-label="Navigate to Settings">
+        <MenuItem onClick={handleSettingsClick} aria-label="Navigate to Settings">
           <SettingsIcon sx={{ mr: 1 }} aria-hidden="true" />
           Settings
         </MenuItem>
