@@ -11,7 +11,6 @@ import ResetPassword from './pages/ResetPass';
 import ChangePassPage from './pages/ChangePassPage';
 import ProfilePage from './pages/ProfilePage';
 import SettinsPage from './pages/SettingsPage';
-import GridV2 from './components/GridV2';
 
 function App() {
   return (
@@ -29,7 +28,6 @@ function App() {
         <Route path="/clouds" element={<CloudsPage/>}/>
         <Route path="/profile" element={<ProfilePage/>}/>
         <Route path="/settings" element={<SettinsPage/>}/>
-        <Route path="/grid" element={<GridV2/>}/>
       </Routes>
     </Router>
   );

@@ -20,6 +20,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import api from '../api';
 import { setAccessToken } from '../api';
+
 const theme = createTheme({
   palette: {
     primary: { main: '#B45C39' },
@@ -45,11 +46,11 @@ function Copyright(props) {
 export default function SignInSide() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const [showPassword, setShowPassword] = useState(false); 
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [visitorId, setVisitorId] = useState(null); // State for visitor ID
+  const [visitorId, setVisitorId] = useState(null); 
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function SignInSide() {
     const formData = { email, password, visitorId, remember };
     api.post('/auth/login', formData)
       .then(res => {
-        setAccessToken(res.data.jwtToken);   
+        setAccessToken(res.data.jwtToken);
         setSuccess('Login successful!');
         setEmail('');
         setPassword('');
@@ -124,16 +125,21 @@ export default function SignInSide() {
           elevation={6}
           square
           sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between', // Space between the form and footer
             backdropFilter: 'blur(10px)',
             backgroundColor: 'rgba(255, 255, 255, 0.7)',
           }}
         >
-          <Box sx={{ my: 8, mx: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ px: 4, pt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
               <LockOutlinedIcon />
             </Avatar>
-            <Typography component="h1" variant="h5">Log in</Typography>
-            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            <Typography component="h1" variant="h5">
+              Log in
+            </Typography>
+            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
               {error && <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>{error}</Typography>}
               {success && <Typography color="success" variant="body2" align="center" sx={{ mb: 2 }}>{success}</Typography>}
               <TextField
@@ -161,25 +167,29 @@ export default function SignInSide() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
               <FormControlLabel
                 control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} color="primary" />}
                 label="Remember me"
               />
-              <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>Login</Button>
+              <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
+                Login
+              </Button>
               <Grid container justifyContent="space-between">
                 <Grid>
                   <Link href="/forgot-password" variant="body2">Forgot password?</Link>
@@ -188,8 +198,11 @@ export default function SignInSide() {
                   <Link href="/signup" variant="body2">{"Don't have an account? Sign Up"}</Link>
                 </Grid>
               </Grid>
-              <Copyright sx={{ mt: 5 }} />
             </Box>
+          </Box>
+          {/* Footer Section */}
+          <Box sx={{ py: 2, px: 4, backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+            <Copyright />
           </Box>
         </Grid>
       </Grid>

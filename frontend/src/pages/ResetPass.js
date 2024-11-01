@@ -1,5 +1,3 @@
-// src/pages/ResetPass.js
-
 import React, { useState, useEffect } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
@@ -8,12 +6,12 @@ import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import api from '../api';
-import { useLocation, useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const theme = createTheme({
   palette: {
@@ -33,13 +31,13 @@ function useQuery() {
 function ResetPassword() {
   const query = useQuery();
   const token = query.get('token');
-  const navigate = useNavigate(); // Initialize useNavigate for navigation
+  const navigate = useNavigate();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false); // Add loading state
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -71,53 +69,59 @@ function ResetPassword() {
       return;
     }
 
-    setLoading(true); // Disable the button by setting loading to true
+    setLoading(true);
 
     const formData = { token, newPassword };
     api.post('/auth/reset-password', formData)
-      .then(res => {
+      .then(() => {
         setSuccess('Password has been reset successfully.');
         setError('');
         setNewPassword('');
         setConfirmPassword('');
 
-        // After successful reset, navigate to login page
         setTimeout(() => {
-          navigate('/login'); // Redirect to login page
+          navigate('/login');
         }, 1000);
       })
       .catch(err => {
-        if (err.response && err.response.data && err.response.data.message) {
-          setError(err.response.data.message);
-        } else {
-          setError('An error occurred. Please try again.');
-        }
+        const errorMessage = err.response?.data?.message || 'An error occurred. Please try again.';
+        setError(errorMessage);
         setSuccess('');
-        setLoading(false); // Re-enable the button in case of an error
+        setLoading(false);
       });
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <Grid container component="main" sx={{ height: '100vh' }}>
+      <Grid container sx={{ height: '100vh' }}>
         <CssBaseline />
         <Grid
-          item
-          xs={false}
-          sm={4}
-          md={7}
+          size={{ xs: 0, sm: 4, md: 7 }}
           sx={{
             backgroundImage: 'url("images/output.jpg")',
             backgroundColor: (t) => t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
+            display: { xs: 'none', sm: 'block' },
           }}
         />
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square sx={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+        <Grid
+          size={{ xs: 12, sm: 8, md: 5 }}
+          component={Paper}
+          elevation={6}
+          square
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between', // Space between form and footer
+            backdropFilter: 'blur(10px)',
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          }}
+        >
           <Box
             sx={{
-              my: 8,
-              mx: 4,
+              px: 4,
+              pt: 8,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -132,7 +136,7 @@ function ResetPassword() {
             <Typography variant="body2" align="center" sx={{ mt: 1 }}>
               Enter your new password below.
             </Typography>
-            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
+            <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
               {error && (
                 <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
                   {error}
@@ -172,26 +176,29 @@ function ResetPassword() {
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
-                disabled={loading} // Disable the button when loading is true
+                disabled={loading}
               >
-                {loading ? 'Resetting...' : 'Reset Password'} {/* Change button text when loading */}
+                {loading ? 'Resetting...' : 'Reset Password'}
               </Button>
-              <Grid container>
-                <Grid item xs>
+              <Grid container gap={1} justifyContent="center">
+                <Grid>
                   <Link href="/login" variant="body2">
                     Back to Login
                   </Link>
                 </Grid>
               </Grid>
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 5 }}>
-                {'Copyright © '}
-                <Link color="inherit" href="https://chellavignesh.com">
-                  chellavignesh.com
-                </Link>{' '}
-                {new Date().getFullYear()}
-                {'.'}
-              </Typography>
             </Box>
+          </Box>
+          {/* Footer Section */}
+          <Box sx={{ py: 2, px: 4, backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+            <Typography variant="body2" color="text.secondary" align="center">
+              {'Copyright © '}
+              <Link color="inherit" href="https://chellavignesh.com">
+                chellavignesh.com
+              </Link>{' '}
+              {new Date().getFullYear()}
+              {'.'}
+            </Typography>
           </Box>
         </Grid>
       </Grid>
@@ -199,5 +206,4 @@ function ResetPassword() {
   );
 }
 
-// **Export the ResetPassword component as default**
 export default ResetPassword;
