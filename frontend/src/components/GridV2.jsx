@@ -3,23 +3,20 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
 import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Link from '@mui/material/Link';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid2';
+import Grid from '@mui/material/Grid2'; // Updated import for Grid v2
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import Cookies from 'js-cookie';
+import FingerprintJS from '@fingerprintjs/fingerprintjs'; // Import FingerprintJS
 import api from '../api';
-import { setAccessToken } from '../api';
+
 const theme = createTheme({
   palette: {
     primary: { main: '#B45C39' },
@@ -27,6 +24,7 @@ const theme = createTheme({
   },
 });
 
+// Basic email regex pattern
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Copyright(props) {
@@ -42,21 +40,21 @@ function Copyright(props) {
   );
 }
 
-export default function SignInSide() {
+export default function GridV2() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [visitorId, setVisitorId] = useState(null); // State for visitor ID
   const navigate = useNavigate();
 
+  // Initialize FingerprintJS and retrieve the visitor ID
   useEffect(() => {
     const getVisitorId = async () => {
       const fp = await FingerprintJS.load();
       const result = await fp.get();
-      setVisitorId(result.visitorId);
+      setVisitorId(result.visitorId); // Store visitor ID in state
       console.log('Visitor ID:', result.visitorId);
     };
     getVisitorId();
@@ -81,19 +79,22 @@ export default function SignInSide() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     if (!validateForm()) return;
 
-    const formData = { email, password, visitorId, remember };
-    api.post('/auth/login', formData)
-      .then(res => {
-        setAccessToken(res.data.jwtToken);   
+    const formData = { email, password, visitorId }; // Include visitor ID
+    api
+      .post('/auth/login', formData)
+      .then((res) => {
+        Cookies.set('apiToken', res.data.jwtToken, { expires: 1, secure: false });
+        Cookies.set('refreshToken', res.data.refreshToken, { expires: 7, secure: false });
         setSuccess('Login successful!');
         setEmail('');
         setPassword('');
         setRemember(false);
         navigate('/dashboard');
       })
-      .catch(err => {
+      .catch((err) => {
         if (err.response?.data?.message?.includes('Account not verified')) {
           navigate(`/verify?email=${encodeURIComponent(email)}`);
         } else if (err.response?.data?.message) {
@@ -108,18 +109,22 @@ export default function SignInSide() {
     <ThemeProvider theme={theme}>
       <Grid container component="main" sx={{ height: '100vh' }}>
         <CssBaseline />
+        {/* Image Background */}
         <Grid
-          size={{ xs: 0, sm: 4, md: 7 }}
+          item
+          size={{ xs: 0, sm: 4, md: 7 }} // Converted xs, sm, md to size prop
           sx={{
-            display: { xs: 'none', sm: 'block' },
+            display: { xs: 'none', sm: 'block' }, // Hide on extra-small screens
             backgroundImage: 'url("images/output.jpg")',
             backgroundColor: (t) => t.palette.grey[50],
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}
         />
+        {/* Form Container */}
         <Grid
-          size={{ xs: 12, sm: 8, md: 5 }}
+          item
+          size={{ xs: 12, sm: 8, md: 5 }} // Converted xs, sm, md to size prop
           component={Paper}
           elevation={6}
           square
@@ -128,14 +133,32 @@ export default function SignInSide() {
             backgroundColor: 'rgba(255, 255, 255, 0.7)',
           }}
         >
-          <Box sx={{ my: 8, mx: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box
+            sx={{
+              my: 8,
+              mx: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
             <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
               <LockOutlinedIcon />
             </Avatar>
-            <Typography component="h1" variant="h5">Log in</Typography>
+            <Typography component="h1" variant="h5">
+              Log in
+            </Typography>
             <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
-              {error && <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>{error}</Typography>}
-              {success && <Typography color="success" variant="body2" align="center" sx={{ mb: 2 }}>{success}</Typography>}
+              {error && (
+                <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
+                  {error}
+                </Typography>
+              )}
+              {success && (
+                <Typography color="success" variant="body2" align="center" sx={{ mb: 2 }}>
+                  {success}
+                </Typography>
+              )}
               <TextField
                 margin="normal"
                 required
@@ -148,7 +171,7 @@ export default function SignInSide() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={!emailPattern.test(email)}
-                helperText={!emailPattern.test(email) && "Invalid email address."}
+                helperText={!emailPattern.test(email) && 'Invalid email address.'}
               />
               <TextField
                 margin="normal"
@@ -156,36 +179,36 @@ export default function SignInSide() {
                 fullWidth
                 name="password"
                 label="Password"
-                type={showPassword ? 'text' : 'password'}
+                type="password"
                 id="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
               />
               <FormControlLabel
-                control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} color="primary" />}
+                control={
+                  <Checkbox
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    color="primary"
+                  />
+                }
                 label="Remember me"
               />
-              <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>Login</Button>
+              <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
+                Login
+              </Button>
+              {/* Updated Grid Container */}
               <Grid container justifyContent="space-between">
-                <Grid>
-                  <Link href="/forgot-password" variant="body2">Forgot password?</Link>
+                <Grid item>
+                  <Link href="/forgot-password" variant="body2">
+                    Forgot password?
+                  </Link>
                 </Grid>
-                <Grid>
-                  <Link href="/signup" variant="body2">{"Don't have an account? Sign Up"}</Link>
+                <Grid item>
+                  <Link href="/signup" variant="body2">
+                    {"Don't have an account? Sign Up"}
+                  </Link>
                 </Grid>
               </Grid>
               <Copyright sx={{ mt: 5 }} />

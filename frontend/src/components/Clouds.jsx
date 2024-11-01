@@ -77,11 +77,6 @@ const Clouds = () => {
     };
 
     try {
-      const apiToken = Cookies.get('apiToken');
-      if (!apiToken) {
-        console.error('API Token is missing');
-        return;
-      }
       if (cloudProvider === 'aws') {
         endpoint = '/vm/aws/addaccount';
       } else if (cloudProvider === 'gcp') {
@@ -89,12 +84,7 @@ const Clouds = () => {
       } else if (cloudProvider === 'azure') {
         endpoint = '/vm/azure/addaccount';
       }
-      const response = await api.post(endpoint, awsData, {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.post(endpoint, awsData);
       console.log(response);
 
       setSuccessMessage(`${cloudProvider.toUpperCase()} cloud account added successfully`);

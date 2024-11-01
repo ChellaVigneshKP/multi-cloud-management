@@ -9,6 +9,10 @@ import VerifyPage from './pages/VerifyPage';
 import CloudsPage from './pages/CloudsPage';
 import ResetPassword from './pages/ResetPass';
 import ChangePassPage from './pages/ChangePassPage';
+import ProfilePage from './pages/ProfilePage';
+import SettinsPage from './pages/SettingsPage';
+import GridV2 from './components/GridV2';
+
 function App() {
   return (
     <Router>
@@ -23,6 +27,9 @@ function App() {
         <Route path="/change-password" element={<ChangePassPage/>} />
         <Route path="/vms" element={<VMsPage/>} />
         <Route path="/clouds" element={<CloudsPage/>}/>
+        <Route path="/profile" element={<ProfilePage/>}/>
+        <Route path="/settings" element={<SettinsPage/>}/>
+        <Route path="/grid" element={<GridV2/>}/>
       </Routes>
     </Router>
   );
