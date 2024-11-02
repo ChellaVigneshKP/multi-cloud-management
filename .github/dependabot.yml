@@ -5,25 +5,85 @@ updates:
     directory: "/frontend" # Directory containing package.json
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    security-updates: true
+    automerged_updates:
+      strategy: "all"
+    labels:
+      - "dependencies"
+      - "automated"
 
   # Configuration for Python (vmservice project)
   - package-ecosystem: "pip"
     directory: "/vmservice" # Directory containing requirements.txt
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    security-updates: true
+    automerged_updates:
+      strategy: "all"
+    labels:
+      - "dependencies"
+      - "automated"
 
   # Configuration for Java Maven projects (individual microservices)
   - package-ecosystem: "maven"
     directory: "/backend/api-gateway" # Adjusted for the specific subdirectory
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    security-updates: true
+    automerged_updates:
+      strategy: "all"
+    labels:
+      - "dependencies"
+      - "automated"
 
   - package-ecosystem: "maven"
     directory: "/backend/auth" # Adjusted for the specific subdirectory
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    security-updates: true
+    automerged_updates:
+      strategy: "all"
+    labels:
+      - "dependencies"
+      - "automated"
 
   - package-ecosystem: "maven"
     directory: "/backend/service-registry" # Adjusted for the specific subdirectory
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "direct"
+    security-updates: true
+    automerged_updates:
+      strategy: "all"
+    labels:
+      - "dependencies"
+      - "automated"
