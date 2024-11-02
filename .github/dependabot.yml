@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Configuration for Maven (Java projects)
+  - package-ecosystem: "maven"
+    directory: "/" # Adjust this if your pom.xml is in a subdirectory, e.g., "/project-name"
+    schedule:
+      interval: "weekly"
+
+  # Configuration for Node.js (JavaScript/TypeScript projects)
+  - package-ecosystem: "npm"
+    directory: "/" # Adjust this if your package.json is in a subdirectory, e.g., "/frontend"
+    schedule:
+      interval: "weekly"
