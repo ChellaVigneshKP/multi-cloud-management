@@ -11,9 +11,6 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-    security-updates: true
-    automerged_updates:
-      strategy: "all"
     labels:
       - "dependencies"
       - "automated"
@@ -29,9 +26,6 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-    security-updates: true
-    automerged_updates:
-      strategy: "all"
     labels:
       - "dependencies"
       - "automated"
@@ -47,9 +41,6 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-    security-updates: true
-    automerged_updates:
-      strategy: "all"
     labels:
       - "dependencies"
       - "automated"
@@ -64,9 +55,6 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-    security-updates: true
-    automerged_updates:
-      strategy: "all"
     labels:
       - "dependencies"
       - "automated"
@@ -81,9 +69,6 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-    security-updates: true
-    automerged_updates:
-      strategy: "all"
     labels:
       - "dependencies"
       - "automated"
