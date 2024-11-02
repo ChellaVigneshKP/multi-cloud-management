@@ -1,7 +1,7 @@
 # --- Frontend ---
 # Node Modules
 /frontend/node_modules
-
+.idea
 # PnP Files (Yarn Plug'n'Play)
 /frontend/.pnp
 /frontend/.pnp.js

@@ -1,13 +1,29 @@
 version: 2
 updates:
-  # Configuration for Maven (Java projects)
-  - package-ecosystem: "maven"
-    directory: "/" # Adjust this if your pom.xml is in a subdirectory, e.g., "/project-name"
+  # Configuration for Node.js (frontend React project)
+  - package-ecosystem: "npm"
+    directory: "/frontend" # Directory containing package.json
     schedule:
       interval: "weekly"
 
-  # Configuration for Node.js (JavaScript/TypeScript projects)
-  - package-ecosystem: "npm"
-    directory: "/" # Adjust this if your package.json is in a subdirectory, e.g., "/frontend"
+  # Configuration for Python (vmservice project)
+  - package-ecosystem: "pip"
+    directory: "/vmservice" # Directory containing requirements.txt
+    schedule:
+      interval: "weekly"
+
+  # Configuration for Java Maven projects (individual microservices)
+  - package-ecosystem: "maven"
+    directory: "/backend/api-gateway" # Adjusted for the specific subdirectory
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "maven"
+    directory: "/backend/auth" # Adjusted for the specific subdirectory
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "maven"
+    directory: "/backend/service-registry" # Adjusted for the specific subdirectory
     schedule:
       interval: "weekly"
