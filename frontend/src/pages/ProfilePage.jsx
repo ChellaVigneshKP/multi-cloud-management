@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect }  from 'react';
 import {
   Box,
   Card,
@@ -23,7 +23,9 @@ import Layout from '../components/Layout';
 
 const ProfilePage = () => {
   const theme = useTheme();
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Profile';
+  }, []); 
   return (
     <Layout>
     <Box sx={{ p: 3 }}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MailOutline as MailOutlineIcon } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -18,7 +18,9 @@ const VerifyPage = () => {
   const query = new URLSearchParams(useLocation().search);
   const email = query.get('email');
   const navigate = useNavigate();
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Verify Email';
+  }, []);
   const handleVerify = (event) => {
     event.preventDefault();
 
@@ -72,7 +74,6 @@ const VerifyPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<MailOutlineIcon />}
       title="Verify Your Email"
       description={`A verification code has been sent to ${email}.`}

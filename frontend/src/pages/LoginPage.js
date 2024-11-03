@@ -25,13 +25,14 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   const [visitorId, setVisitorId] = useState(null); 
   const navigate = useNavigate();
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Login';
+  }, []);
   useEffect(() => {
     const getVisitorId = async () => {
       const fp = await FingerprintJS.load();
       const result = await fp.get();
       setVisitorId(result.visitorId);
-      console.log('Visitor ID:', result.visitorId);
     };
     getVisitorId();
   }, []);
@@ -52,7 +53,6 @@ const LoginPage = () => {
     setError('');
     return true;
   };
-
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!validateForm()) return;
@@ -83,7 +83,6 @@ const LoginPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<LockOutlinedIcon />}
       title="Log in"
       description=""

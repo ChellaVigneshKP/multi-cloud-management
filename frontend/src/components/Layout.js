@@ -22,6 +22,7 @@ import {
   Avatar,
   Badge,
   Link as MuiLink,
+  useMediaQuery
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -128,6 +129,7 @@ const Layout = ({ children }) => {
     handleMenuClose();
     navigate('/settings'); // This will navigate to the settings page
   };
+  const isSmallScreen = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -158,15 +160,15 @@ const Layout = ({ children }) => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ flexGrow: 1 }}
+            sx={{ flexGrow: 1 ,fontFamily: `'Comfortaa', sans-serif` }}
             aria-label="Multi-Cloud Management Dashboard"
           >
             <img
-              src="/images/logo.png"
+              src="/logo/Logo.png"
               alt="Logo"
-              style={{ height: 30, verticalAlign: 'middle', marginRight: 10 }}
+              style={{ height: 40, verticalAlign: 'middle', marginRight: 10 }}
             />
-            Multi-Cloud Management
+            {isSmallScreen ? 'C-Cloud' : 'C-Cloud <|> Centralize your Clouds'}
           </Typography>
 
           {/* Top Navigation Links - Visible only on medium and larger screens */}
@@ -312,7 +314,7 @@ const Layout = ({ children }) => {
                 </MuiLink>
               </Typography>
               <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5 }}>
-                Empowering Cloud Management
+              Centralize Your Clouds. <br/>Streamline Your Management.
               </Typography>
             </Box>
           </Box>

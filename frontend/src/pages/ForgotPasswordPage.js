@@ -17,7 +17,9 @@ const ForgotPasswordPage = () => {
   const [countdown, setCountdown] = useState(10);
   const isMounted = useRef(true);
   const navigate = useNavigate();
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Forgot Password';
+  }, []);
   useEffect(() => {
     return () => {
       isMounted.current = false;
@@ -78,7 +80,6 @@ const ForgotPasswordPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<LockOutlinedIcon />}
       title="Forgot Password?"
       description="Enter your email and we'll send you a link to reset your password."
