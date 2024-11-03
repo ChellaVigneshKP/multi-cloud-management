@@ -5,8 +5,7 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
-import { styled } from '@mui/material/styles';
-import { useTheme } from '@mui/material/styles';
+import { styled, useTheme, useMediaQuery } from '@mui/material';
 import Copyright from './Copyright';
 
 const StyledGrid = styled(Grid)(({ theme }) => ({
@@ -52,14 +51,15 @@ const AuthLayout = ({
   children,
 }) => {
   const theme = useTheme();
-
+  const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const backgroundImage = leftImage || (isMediumScreen ? '/Background/MediumBackground.png' : '/Background/Background.png');
   return (
     <Grid container sx={{ height: '100vh' }}>
       {/* Left side image */}
       <StyledGrid
         size={{ xs: 0, sm: 4, md: 7 }}
         sx={{
-          backgroundImage: `url(${leftImage})`,
+          backgroundImage: `url(${backgroundImage})`,
           backgroundColor:
             theme.palette.mode === 'light'
               ? theme.palette.grey[50]

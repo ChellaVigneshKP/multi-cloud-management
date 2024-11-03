@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect }  from 'react';
 import {
   Box,
   Card,
@@ -13,6 +13,9 @@ import {
 } from '@mui/material';
 import Layout from '../components/Layout';
 const SettingsPage = () => {
+  useEffect(() => {
+    document.title = 'C-Cloud | Settings';
+  }, []); 
   return (
     <Layout>
     <Box sx={{ p: 3 }}>

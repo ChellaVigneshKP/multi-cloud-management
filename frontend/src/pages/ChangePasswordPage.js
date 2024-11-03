@@ -29,6 +29,7 @@ const ChangePasswordPage = () => {
       isMounted.current = false;
     };
   }, []);
+  
 
   useEffect(() => {
     const emailParam = query.get('email') || '';
@@ -89,7 +90,6 @@ const ChangePasswordPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<LockResetIcon />}
       title="Change Password"
       description="Click the button below to request a password reset link."

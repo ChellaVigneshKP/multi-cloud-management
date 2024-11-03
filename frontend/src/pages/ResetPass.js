@@ -20,7 +20,9 @@ const ResetPasswordPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Reset Password';
+  }, []);
   useEffect(() => {
     if (!token) {
       setError('Invalid or missing password reset token.');
@@ -77,7 +79,6 @@ const ResetPasswordPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<LockOutlinedIcon />}
       title="Reset Password"
       description="Enter your new password below."

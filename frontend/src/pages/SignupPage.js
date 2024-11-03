@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
@@ -25,7 +25,9 @@ const SignupPage = () => {
   const [touchedEmail, setTouchedEmail] = useState(false);
 
   const navigate = useNavigate();
-
+  useEffect(() => {
+    document.title = 'C-Cloud | Signup';
+  }, []);
   const validateForm = () => {
     if (
       !firstName.trim() ||
@@ -88,7 +90,6 @@ const SignupPage = () => {
 
   return (
     <AuthLayout
-      leftImage="images/output.jpg"
       avatarIcon={<LockOutlinedIcon />}
       title="Sign Up"
       description="" // Empty description
