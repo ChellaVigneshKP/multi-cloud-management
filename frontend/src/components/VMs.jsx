@@ -9,18 +9,17 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Layout from './Layout';
 import api from '../api';
 import noVmsImage from '../assets/images/avatars/vm-not-found.png'
-import vmLoading from '../assets/images/avatars/cloud-hosting-animate.svg'
 import awsLogo from '../assets/images/logo/aws-logo.png'
 import azureLogo from '../assets/images/logo/azure-logo.png'
 import gcpLogo from '../assets/images/logo/gcp-logo.png'
-
+import cloudLoading from '../assets/animations/CloudLoading.json'
+import Lottie from 'lottie-react';
 const VMs = () => {
   const [instances, setInstances] = useState([]);
   const [selectedInstances, setSelectedInstances] = useState([]);
   const [showTerminated, setShowTerminated] = useState(false);
   const [selectedAction, setSelectedAction] = useState('');
   const [loading, setLoading] = useState(true);
-  const [gridHeight, setGridHeight] = useState(600);
 
   const fetchInstances = async () => {
     setLoading(true);
@@ -33,24 +32,10 @@ const VMs = () => {
     } finally {
       setLoading(false);
     }
-  };  
+  };
 
   useEffect(() => {
     fetchInstances();
-  }, []);
-
-  useEffect(() => {
-    const calculateHeight = () => {
-      const headerOffset = document.getElementById('grid-header')?.offsetHeight || 0;
-      const windowHeight = window.innerHeight;
-      const padding = 162; // Total vertical padding/margin in your layout (adjust as needed)
-      setGridHeight(windowHeight - headerOffset - padding);
-    };
-
-    calculateHeight(); // Initial calculation
-
-    window.addEventListener('resize', calculateHeight);
-    return () => window.removeEventListener('resize', calculateHeight);
   }, []);
 
   const handleRefresh = () => {
@@ -123,13 +108,13 @@ const VMs = () => {
       headerName: 'Provider',
       renderCell: (params) => {
         const provider = params.value;
-    
+
         // Define logo based on provider name
         const logoSrc = provider === 'AWS' ? awsLogo
-                     : provider === 'Azure' ? azureLogo
-                     : provider === 'GCP' ? gcpLogo
-                     : null;
-    
+          : provider === 'Azure' ? azureLogo
+            : provider === 'GCP' ? gcpLogo
+              : null;
+
         return (
           <Tooltip title={provider}>
             <Box display="flex" alignItems="center">
@@ -292,7 +277,6 @@ const VMs = () => {
 
   // Prepare rows for DataGrid
   const rows = filteredInstances.map((vm) => ({ id: vm.instanceId, ...vm }));
-  console.log("Grid Height", gridHeight);
   // Custom No Rows Overlay
   const AnimatedDots = () => (
     <span style={{ display: 'inline-block', marginLeft: '4px' }}>
@@ -312,19 +296,27 @@ const VMs = () => {
         backgroundColor: 'rgba(255, 255, 255, 0.8)', // Optional: add semi-transparent background
       }}
     >
-      <img src={vmLoading} alt="Cloud and Servers" style={{ width: '400px', height: '400px' }} />
+      <Box
+        sx={{
+          position: 'relative',
+          top: '-60px', // Moves the element 20px down from the top
+          padding: '10px',
+        }}
+      >
+        <Lottie animationData={cloudLoading} style={{ width: '180px', height: '180px' }} />
+      </Box>
       <Typography variant="h6" gutterBottom style={{ marginTop: '-100px' }}>
-       Loading VM's <AnimatedDots />
+        Loading VM's <AnimatedDots />
       </Typography>
       <style>
-      {`
+        {`
         @keyframes dots {
           0%, 20% { color: transparent; }
           40% { color: black; }
           60%, 100% { color: transparent; }
         }
       `}
-    </style>
+      </style>
     </Box>
   );
 
