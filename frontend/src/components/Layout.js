@@ -166,7 +166,7 @@ const Layout = ({ children }) => {
             <img
               src="/logo/Logo.png"
               alt="Logo"
-              style={{ height: 40, verticalAlign: 'middle', marginRight: 10 }}
+              style={{ height: 35, verticalAlign: 'middle', marginRight: 10 }}
             />
             {isSmallScreen ? 'C-Cloud' : 'C-Cloud <|> Centralize your Clouds'}
           </Typography>
@@ -304,7 +304,7 @@ const Layout = ({ children }) => {
                 variant="body2"
                 color="textSecondary"
                 align="center"
-                sx={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center' }}
+                sx={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center',fontFamily: `'Comfortaa', sans-serif` }}
               >
                 <span style={{ marginRight: 4 }}>©</span>
                 {' '}
@@ -313,7 +313,7 @@ const Layout = ({ children }) => {
                   chellavignesh.com
                 </MuiLink>
               </Typography>
-              <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5 }}>
+              <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5,fontFamily: `'Comfortaa', sans-serif` }}>
               Centralize Your Clouds. <br/>Streamline Your Management.
               </Typography>
             </Box>

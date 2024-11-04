@@ -16,10 +16,10 @@ import SettingsPage from './pages/SettingsPage';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#00445d', // Sunset orange
+      main: '#00445d',
     },
     secondary: {
-      main: '#88b5c4', // Sunset yellow
+      main: '#88b5c4',
     },
   },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Avatar from '@mui/material/Avatar';
 import Paper from '@mui/material/Paper';
@@ -7,6 +7,14 @@ import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
 import Copyright from './Copyright';
+
+// Utility function to preload images
+const preloadImages = (urls) => {
+  urls.forEach((url) => {
+    const img = new Image();
+    img.src = url;
+  });
+};
 
 const StyledGrid = styled(Grid)(({ theme }) => ({
   backgroundSize: 'cover',
@@ -20,12 +28,16 @@ const StyledGrid = styled(Grid)(({ theme }) => ({
 const FormContainer = styled(Paper)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'space-between', // Space between form and footer
+  justifyContent: 'space-between',
   backdropFilter: 'blur(10px)',
   backgroundColor: 'rgba(255, 255, 255, 0.7)',
   height: '100%',
-  overflow: 'hidden', // Prevent overflow to ensure footer stays
-  flex: '1 1 auto', // Adjust flex-grow and flex-shrink
+  overflow: 'hidden',
+  flex: '1 1 auto',
+  backgroundImage: `url('/Background/FormBackground.jpg')`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
 }));
 
 const FormBox = styled(Box)(({ theme }) => ({
@@ -33,8 +45,8 @@ const FormBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  flex: '1 1 auto', // Allow it to grow and shrink
-  overflowY: 'auto', // Enable scrolling if content exceeds
+  flex: '1 1 auto',
+  overflowY: 'auto',
 }));
 
 const FooterBox = styled(Box)(({ theme }) => ({
@@ -47,15 +59,24 @@ const AuthLayout = ({
   leftImage,
   avatarIcon,
   title,
-  description = '', // Default value using destructuring
+  description = '',
   children,
 }) => {
   const theme = useTheme();
   const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const backgroundImage = leftImage || (isMediumScreen ? '/Background/MediumBackground.png' : '/Background/Background.png');
+
+  // Preload images on component mount
+  useEffect(() => {
+    preloadImages([
+      '/Background/FormBackground.jpg',
+      '/Background/MediumBackground.png',
+      '/Background/Background.png',
+    ]);
+  }, []);
+
   return (
     <Grid container sx={{ height: '100vh' }}>
-      {/* Left side image */}
       <StyledGrid
         size={{ xs: 0, sm: 4, md: 7 }}
         sx={{
@@ -66,7 +87,6 @@ const AuthLayout = ({
               : theme.palette.grey[900],
         }}
       />
-      {/* Right side form */}
       <Grid
         size={{ xs: 12, sm: 8, md: 5 }}
         component={FormContainer}
@@ -96,10 +116,10 @@ const AuthLayout = ({
 };
 
 AuthLayout.propTypes = {
-  leftImage: PropTypes.string.isRequired,
+  leftImage: PropTypes.string,
   avatarIcon: PropTypes.element.isRequired,
   title: PropTypes.string.isRequired,
-  description: PropTypes.string, // Optional prop
+  description: PropTypes.string,
   children: PropTypes.node.isRequired,
 };
 
