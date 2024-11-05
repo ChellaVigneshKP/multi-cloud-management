@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { Suspense, lazy }  from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import SignupPage from './pages/SignupPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import VMsPage from './pages/VMsPage';
-import VerifyPage from './pages/VerifyPage';
-import CloudsPage from './pages/CloudsPage';
-import ResetPasswordPage from './pages/ResetPass';
-import ChangePasswordPage from './pages/ChangePasswordPage';
-import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
-
+import CustomLoader from './components/CustomLoader';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const SignupPage = lazy(() => import('./pages/SignupPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const VMsPage = lazy(() => import('./pages/VMsPage'));
+const VerifyPage = lazy(() => import('./pages/VerifyPage'));
+const CloudsPage = lazy(() => import('./pages/CloudsPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPass'));
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('./pages/BrandEngaged404Page'));
+const ContactUsPage = lazy(() => import('./pages/ContactUsPage'));
 const theme = createTheme({
   palette: {
     primary: {
@@ -28,8 +30,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Router>
+      <Suspense fallback={<CustomLoader/>}>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<Navigate to="/404" />} />
+          <Route path="/404" element={<NotFoundPage/>} />
+          <Route path="/" element={<LoginPage/>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify" element={<VerifyPage />} />
@@ -41,7 +46,10 @@ function App() {
           <Route path="/clouds" element={<CloudsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/contact-us" element={<ContactUsPage />} />
+          {/* <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} /> */}
         </Routes>
+        </Suspense>
       </Router>
     </ThemeProvider>
   );

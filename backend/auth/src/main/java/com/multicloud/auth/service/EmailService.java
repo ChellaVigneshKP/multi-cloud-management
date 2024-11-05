@@ -4,7 +4,6 @@ import com.multicloud.auth.dto.LoginAlertDto;
 import com.multicloud.auth.model.User;
 import jakarta.mail.MessagingException;  // Exception for messaging errors
 import jakarta.mail.internet.MimeMessage;  // Class for MIME messages
-import org.springframework.beans.factory.annotation.Autowired;  // For dependency injection
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;  // Interface for sending emails
 import org.springframework.mail.javamail.MimeMessageHelper;  // Helper class for creating MIME messages
@@ -14,16 +13,19 @@ import org.thymeleaf.context.Context;
 
 @Service  // Marks this class as a Spring service
 public class EmailService {
-    @Autowired  // Automatically injects the JavaMailSender bean
-    private JavaMailSender emailSender;
-    @Autowired
-    private SpringTemplateEngine templateEngine;
+    private final JavaMailSender emailSender;
+    private final SpringTemplateEngine templateEngine;
 
     @Value("${frontend.base-url}")
     private String frontendBaseUrl;
 
     @Value("${email.logo.url}")
     private String logoUrl;
+
+    public EmailService(JavaMailSender emailSender, SpringTemplateEngine templateEngine) {
+        this.emailSender = emailSender;
+        this.templateEngine = templateEngine;
+    }
 
     private void sendEmail(String to, String subject, String templateName, Context context) throws MessagingException {
         String htmlContent = templateEngine.process(templateName, context);

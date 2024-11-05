@@ -11,6 +11,7 @@ import com.multicloud.auth.responses.TokenResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;
+import com.multicloud.auth.util.CookieUtil;
 import com.multicloud.auth.view.Views;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -45,17 +45,22 @@ public class AuthenticationController {
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationController.class);
     private final JweService jweService;
     private final AuthenticationService authenticationService;  // Service for authentication-related tasks
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    private final ForgotPasswordService forgotPasswordService;
+    private final HttpServletRequest request;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    @Autowired
-    private ForgotPasswordService forgotPasswordService;
-    @Autowired
-    private HttpServletRequest request;
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    public AuthenticationController(JweService jweService, AuthenticationService authenticationService) {
+    public AuthenticationController(
+            JweService jweService,
+            AuthenticationService authenticationService,
+            ForgotPasswordService forgotPasswordService,
+            HttpServletRequest request,
+            RefreshTokenRepository refreshTokenRepository) {
         this.jweService = jweService;
         this.authenticationService = authenticationService;
+        this.forgotPasswordService = forgotPasswordService;
+        this.request = request;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Operation(summary = "User registration", description = "Register a new user")
@@ -65,7 +70,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/signup")
-    public ResponseEntity<?> register(@RequestBody RegisterUserDto registerUserDto) {
+    public ResponseEntity<Object> register(@RequestBody RegisterUserDto registerUserDto) {
         try {
             authenticationService.signup(registerUserDto);
             logger.info("User Registered Successfully with Username: {}", registerUserDto.getUsername());
@@ -88,7 +93,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/login")
-    public ResponseEntity<?> authenticate(@RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
+    public ResponseEntity<Object> authenticate(@RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
         try {
             final String UNKNOWN_IP = "Unknown";  // Define a constant for "Unknown"
             String clientIpv4 = request.getHeader("X-User-IP");
@@ -107,16 +112,14 @@ public class AuthenticationController {
             }
             String refreshToken = refreshTokenOpt.get().getToken();
             Duration refreshTokenExpiry = loginUserDto.isRemember() ? Duration.ofDays(30) : Duration.ofDays(7);
-            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(true)  // Set to true in production if using HTTPS
-                    .path("/")
-                    .maxAge(refreshTokenExpiry)  // Set appropriate expiry
-                    .sameSite("None")  // Consider 'Lax' or 'None' if cross-origin is necessary
-                    .build();
+            ResponseCookie refreshTokenCookie = CookieUtil.createCookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, refreshTokenExpiry, true, true, "None");
+            ResponseCookie jweTokenCookie = CookieUtil.createCookie("jweToken", jweToken, Duration.ofMillis(jweService.getExpirationTime()), true, true, "None");
             logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
-            LoginResponse loginResponse = new LoginResponse(jweToken, jweService.getExpirationTime());
-            return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString()).body(loginResponse);
+            LoginResponse loginResponse = new LoginResponse("Login successful");
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, jweTokenCookie.toString())
+                    .body(loginResponse);
         } catch (UsernameNotFoundException e) {
             logger.error("User not found: {}", loginUserDto.getEmail());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(e.getMessage()));
@@ -139,7 +142,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/verify")
-    public ResponseEntity<?> verifyUser(@RequestBody VerifyUserDto verifyUserDto) {
+    public ResponseEntity<Object> verifyUser(@RequestBody VerifyUserDto verifyUserDto) {
         try {
             authenticationService.verifyUser(verifyUserDto);
             logger.info("User Verified Successfully with Email ID: {}", verifyUserDto.getEmail());
@@ -157,7 +160,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json"))
     })
     @PostMapping("/resend")
-    public ResponseEntity<?> resendVerificationCode(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<Object> resendVerificationCode(@RequestBody Map<String, String> payload) {
         String email = payload.get("email");
         try {
             authenticationService.resendVerificationCode(email);
@@ -176,7 +179,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/validate-token")
-    public ResponseEntity<?> validateToken(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<Object> validateToken(@RequestBody Map<String, String> payload) {
         String token = payload.get("token");
         if (token == null || token.isEmpty()) {
             logger.error("Token is required");
@@ -206,7 +209,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/userinfo")
-    public ResponseEntity<?> getUserInfo(
+    public ResponseEntity<Object> getUserInfo(
             @RequestHeader("X-User-Name") String username,
             @RequestHeader("X-User-Email") String email,
             @RequestHeader("X-User-Id") String userId) {
@@ -227,7 +230,7 @@ public class AuthenticationController {
             @ApiResponse(responseCode = "200", description = "Password reset link sent successfully")
     })
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<Object> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         logger.info("Received forgot password request for email: {}", request.getEmail());
         try {
             forgotPasswordService.processForgotPassword(request.getEmail());
@@ -247,7 +250,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/take-action")
-    public ResponseEntity<?> takeAction(@Valid @RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<Object> takeAction(@Valid @RequestBody ForgotPasswordRequest request) {
         logger.info("Received Change password request for email: {}", request.getEmail());
         try {
             forgotPasswordService.processForgotPassword(request.getEmail());
@@ -267,7 +270,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json"))
     })
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<Object> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         logger.debug("Received reset password request");
         try {
             forgotPasswordService.resetPassword(request.getToken(), request.getNewPassword());
@@ -291,7 +294,10 @@ public class AuthenticationController {
     })
     @PostMapping("/refresh-token")
     @JsonView(Views.Public.class)
-    public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken) {
+    public ResponseEntity<Object> refreshToken(@CookieValue(value = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Refresh token is missing");
+        }
         try{
             logger.debug("Received refresh token: {}", refreshToken);
             RefreshToken currentRefreshToken = authenticationService.getRefreshToken(refreshToken);
@@ -300,25 +306,24 @@ public class AuthenticationController {
             Duration remainingDuration = Duration.between(LocalDateTime.now(),
                     LocalDateTime.ofInstant(Instant.ofEpochMilli(tokens.refreshTokenExpiry()), ZoneId.systemDefault()));
             long maxAgeSeconds = remainingDuration.getSeconds();
-            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.refreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .path("/")
-                    .maxAge(maxAgeSeconds)
-                    .sameSite("None")
-                    .build();
+            ResponseCookie refreshTokenCookie = CookieUtil
+                    .createCookie(REFRESH_TOKEN_COOKIE_NAME,
+                            tokens.refreshToken(),
+                            maxAgeSeconds, true, true,
+                            "None");
+            ResponseCookie jweTokenCookie = CookieUtil
+                    .createCookie("jweToken",
+                            tokens.accessToken(),
+                            Duration.ofMillis(jweService.getExpirationTime()), true, true,
+                            "None");
             logger.info("Token refreshed successfully for User: {}", user.getUsername());
+            LoginResponse loginResponse = new LoginResponse("Token refreshed successfully");
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                    .body(tokens);
+                    .header(HttpHeaders.SET_COOKIE, jweTokenCookie.toString())
+                    .body(loginResponse);
         } catch (InvalidRefreshTokenException | TokenNotFoundException e) {
-            ResponseCookie expiredCookie = ResponseCookie.from("refreshToken", "")
-                    .httpOnly(true)
-                    .secure(true)
-                    .path("/")
-                    .maxAge(0)  // Setting maxAge to 0 deletes the cookie
-                    .sameSite("None")
-                    .build();
+            ResponseCookie expiredCookie = CookieUtil.createCookie(REFRESH_TOKEN_COOKIE_NAME, "", 0, true, true, "None");
             logger.error("Token validation failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
@@ -333,7 +338,7 @@ public class AuthenticationController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<Object> logout(@CookieValue(value = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken) {
         if (refreshToken == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Refresh token is missing");
         }
@@ -343,6 +348,7 @@ public class AuthenticationController {
         // Optionally, set the refresh token cookie to expire immediately
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, "refreshToken=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure");
+        headers.add(HttpHeaders.SET_COOKIE, "jweToken=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure");
         return ResponseEntity.ok().headers(headers).body("Logged out successfully");
     }
 }

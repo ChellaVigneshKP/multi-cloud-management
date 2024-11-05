@@ -5,11 +5,10 @@ import com.multicloud.api_gateway.util.JweUtil;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -23,15 +22,11 @@ import java.net.InetSocketAddress;
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationFilter.class);
+    private final JweUtil jweUtil;
 
-    @Autowired
-    private RouteValidator validator;
-
-    @Autowired
-    private JweUtil jweUtil;
-
-    public AuthenticationFilter() {
+    public AuthenticationFilter(JweUtil jweUtil) {
         super(Config.class);
+        this.jweUtil = jweUtil;
     }
 
     @Override
@@ -39,25 +34,18 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
             String requestPath = request.getURI().getPath();
-            if (validator.isSecured.test(request)) {
-                if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-                    return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Missing authorization header");
+            if (RouteValidator.getIsSecured().test(request)) {
+                HttpCookie jweTokenCookie = request.getCookies().getFirst("jweToken");
+                String jweToken = jweTokenCookie != null ? jweTokenCookie.getValue() : null;
+                if (jweToken == null) {
+                    return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Missing authorization cookie");
                 }
-
-                String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-                if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    authHeader = authHeader.substring(7);
-                } else {
-                    return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Invalid authorization header format");
-                }
-
                 try {
-                    JWTClaimsSet claims = jweUtil.validateToken(authHeader);
+                    JWTClaimsSet claims = jweUtil.validateToken(jweToken);
                     // Extract user details from claims
                     String username = claims.getSubject();
                     String email = (String) claims.getClaim("emailId");
                     String userId = String.valueOf(claims.getClaim("userId"));
-
                     // Extract client IP addresses
                     String[] clientIpAddresses = extractClientIpAddresses(request);
                     String ipAddressV4 = clientIpAddresses[0];
@@ -154,6 +142,30 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     }
 
     public static class Config {
-        // Configuration properties if needed
+        private boolean enableLogging; // Example property to enable logging
+        private String customHeader;   // Example property for a custom header
+
+        // Constructor
+        public Config(boolean enableLogging, String customHeader) {
+            this.enableLogging = enableLogging;
+            this.customHeader = customHeader;
+        }
+
+        // Getters and setters
+        public boolean isEnableLogging() {
+            return enableLogging;
+        }
+
+        public void setEnableLogging(boolean enableLogging) {
+            this.enableLogging = enableLogging;
+        }
+
+        public String getCustomHeader() {
+            return customHeader;
+        }
+
+        public void setCustomHeader(String customHeader) {
+            this.customHeader = customHeader;
+        }
     }
 }

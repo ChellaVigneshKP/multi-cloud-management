@@ -26,12 +26,17 @@ public class RouteValidator {
             "/auth/refresh-token",
             "/auth/logout"
     );
-
+    private RouteValidator() {
+        // Prevent instantiation
+    }
     // Predicate to determine if a request is secured (requires authentication)
-    public Predicate<ServerHttpRequest> isSecured =
+    public static final Predicate<ServerHttpRequest> isSecured =
             request -> openApiEndpoints.stream()
                     .noneMatch(url -> {
                         String path = request.getURI().getPath();
                         return path.startsWith(url.replace("/**", ""));  // Handles wildcard properly
                     }); // Check if the request path starts with any open API endpoint
+    public static Predicate<ServerHttpRequest> getIsSecured() {
+        return isSecured;
+    }
 }

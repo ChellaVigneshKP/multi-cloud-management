@@ -1,5 +1,7 @@
 package com.multicloud.api_gateway.util;
 
+import com.multicloud.api_gateway.exception.InvalidTokenException;
+import com.multicloud.api_gateway.exception.PrivateKeyLoadingException;
 import com.multicloud.api_gateway.exception.TokenExpiredException;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSADecrypter;
@@ -37,7 +39,7 @@ public class JweUtil {
         this.privateKey = loadPrivateKey();
     }
 
-    public JWTClaimsSet validateToken(String token) throws Exception {
+    public JWTClaimsSet validateToken(String token) throws InvalidTokenException, TokenExpiredException {
         try {
             JWEObject jweObject = JWEObject.parse(token);
             RSADecrypter decrypter = new RSADecrypter(privateKey);
@@ -51,7 +53,7 @@ public class JweUtil {
 
             return claimsSet;
         } catch (ParseException | JOSEException e) {
-            throw new Exception("Invalid or malformed token", e);
+            throw new InvalidTokenException("Invalid or malformed token", e);
         }
     }
 
@@ -69,7 +71,7 @@ public class JweUtil {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return (RSAPrivateKey) kf.generatePrivate(spec);
         } catch (Exception e) {
-            throw new RuntimeException("Error loading private key", e);
+            throw new PrivateKeyLoadingException("Error loading private key", e);
         }
     }
 }

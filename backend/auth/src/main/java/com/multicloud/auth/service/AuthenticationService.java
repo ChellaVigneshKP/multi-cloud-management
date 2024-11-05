@@ -12,24 +12,27 @@ import com.multicloud.auth.responses.TokenResponse;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import java.util.Random;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 
 @Service  // Indicates that this class is a service component
 public class AuthenticationService {
+    private static final Random RANDOM = new Random();
     private final UserRepository userRepository;  // Repository for user data
     private final PasswordEncoder passwordEncoder;  // Encoder for passwords
     private final AuthenticationManager authenticationManager;  // Manager for authentication
     private final EmailService emailService;  // Service for sending emails
     private final KafkaTemplate<String, Map<String, String>> kafkaTemplate;  // Kafka template for message production
-    private static final String USER_REGISTRATION_TOPIC = "user-registration";  // Kafka topic for user registration
+    @Value("${spring.kafka.topic.user-registration}")
+    private String userRegistrationTopic;  // Kafka topic for user registration
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
     private final AsyncEmailService asyncEmailService;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -162,11 +165,11 @@ public class AuthenticationService {
             User user = optionalUser.get();
             // Check if the user is already verified
             if (user.isEnabled()) {
-                throw new RuntimeException("User already verified");
+                throw new AccountAlreadyVerifiedException("User already verified");
             }
             // Check if the verification code has expired
             if (user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Verification code has expired");
+                throw new InvalidVerificationCodeException("Verification code has expired");
             }
             // Verify the user's code
             if (user.getVerificationCode().equals(input.getVerificationCode())) {
@@ -178,10 +181,10 @@ public class AuthenticationService {
                 userDetails.put("username", user.getUsername());
                 logger.info("User with username '{}' verified successfully", user.getUsername());
                 // Send user details to Kafka
-                logger.info("Sending to Kafka - Topic: {}, Key (Email): {}, Value (Username): {}", USER_REGISTRATION_TOPIC, user.getUsername(), userDetails);
-                kafkaTemplate.send(USER_REGISTRATION_TOPIC, user.getUsername(), userDetails);
+                logger.info("Sending to Kafka - Topic: {}, Key (Email): {}, Value (Username): {}", userRegistrationTopic, user.getUsername(), userDetails);
+                kafkaTemplate.send(userRegistrationTopic, user.getUsername(), userDetails);
             } else {
-                throw new RuntimeException("Invalid verification code");
+                throw new InvalidVerificationCodeException("Invalid verification code");
             }
         } else {
             throw new UsernameNotFoundException("User not found");
@@ -193,9 +196,8 @@ public class AuthenticationService {
         Optional<User> optionalUser = userRepository.findByEmail(email);  // Find user by email
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
-            // Check if the account is already verified
             if (user.isEnabled()) {
-                throw new RuntimeException("Account is already verified");
+                throw new AccountAlreadyVerifiedException("Account is already verified");
             }
             user.setVerificationCode(generateVerificationCode());  // Generate a new verification code
             user.setVerificationCodeExpiresAt(LocalDateTime.now().plusHours(1));  // Set new expiration time
@@ -220,8 +222,7 @@ public class AuthenticationService {
 
     // Method to generate a random verification code
     private String generateVerificationCode() {
-        Random random = new Random();
-        int code = random.nextInt(900000) + 100000;  // Generate a 6-digit code
+        int code = RANDOM.nextInt(900000) + 100000;  // Generate a 6-digit code
         return String.valueOf(code);
     }
 

@@ -5,7 +5,6 @@ import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,20 +16,17 @@ import java.util.Optional;
 @Service
 public class ForgotPasswordService {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private AsyncEmailService asyncEmailService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AsyncEmailService asyncEmailService;
 
     private static final Logger logger = LoggerFactory.getLogger(ForgotPasswordService.class);
 
+    public ForgotPasswordService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailService asyncEmailService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.asyncEmailService = asyncEmailService;
+    }
     private String generateToken() {
         SecureRandom secureRandom = new SecureRandom();
         byte[] token = new byte[24];
