@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
-import api, { setAccessToken } from '../api';
+import api from '../api';
 import AuthLayout from '../components/AuthLayout';
 import LoadingButton from '../components/LoadingButton';
 
@@ -19,15 +19,17 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [visitorId, setVisitorId] = useState(null); 
+  const [visitorId, setVisitorId] = useState(null);
   const navigate = useNavigate();
+
   useEffect(() => {
     document.title = 'C-Cloud | Login';
   }, []);
+
   useEffect(() => {
     const getVisitorId = async () => {
       const fp = await FingerprintJS.load();
@@ -53,6 +55,7 @@ const LoginPage = () => {
     setError('');
     return true;
   };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!validateForm()) return;
@@ -62,8 +65,7 @@ const LoginPage = () => {
     setError('');
 
     api.post('/auth/login', formData)
-      .then(res => {
-        setAccessToken(res.data.jwtToken);
+      .then(() => {
         setSuccess('Login successful!');
         setEmail('');
         setPassword('');
@@ -82,11 +84,7 @@ const LoginPage = () => {
   };
 
   return (
-    <AuthLayout
-      avatarIcon={<LockOutlinedIcon />}
-      title="Log in"
-      description=""
-    >
+    <AuthLayout avatarIcon={<LockOutlinedIcon />} title="Log in" description="">
       <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
         {error && (
           <Typography color="error" variant="body2" align="center" sx={{ mb: 2 }}>
@@ -123,31 +121,27 @@ const LoginPage = () => {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword(!showPassword)}
-                  edge="end"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
           }}
         />
         <FormControlLabel
           control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} color="primary" />}
           label="Remember me"
         />
-        <LoadingButton
-          type="submit"
-          fullWidth
-          variant="contained"
-          sx={{ mt: 3, mb: 2 }}
-          loading={false} // Implement loading state if needed
-        >
+        <LoadingButton type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} loading={false}>
           Login
         </LoadingButton>
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

@@ -38,7 +38,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 
-import api,{clearAccessToken} from '../api';
+import api from '../api';
 
 const drawerWidth = 240;
 
@@ -108,10 +108,6 @@ const Layout = ({ children }) => {
   const handleLogoutConfirm = async () => {
     try {
       await api.post('/auth/logout', {}, { withCredentials: true }); // Ensure refresh token is included
-  
-      // Clear access token and redirect to login
-      clearAccessToken();
-      localStorage.clear();
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);

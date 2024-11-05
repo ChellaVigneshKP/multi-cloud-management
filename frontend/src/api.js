@@ -1,100 +1,72 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
-// Define base API URL once
+// Define base API URL
 const BASE_API_URL = process.env.REACT_APP_API_BASE_URL || 'http://192.168.1.8:6061';
 
+function getCsrfToken() {
+  return Cookies.get('XSRF-TOKEN');
+}
+
+console.log(getCsrfToken());
 // Create Axios instance
 const api = axios.create({
   baseURL: BASE_API_URL,
   withCredentials: true,  // Include cookies in requests
 });
 
-// In-memory variable for storing the access token
-let accessToken = null;
-
-// Function to set the access token
-export const setAccessToken = (token) => {
-  accessToken = token;
-};
-
-// Function to clear the access token
-export const clearAccessToken = () => {
-  accessToken = null;
-};
-
-// Request Interceptor
-api.interceptors.request.use(
-  (config) => {
-    // Attach the access token from memory
-    if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Variables for refresh token management
+// Manage refresh token mechanism
 let isRefreshing = false;
 let subscribers = [];
 
-// Function to notify all subscribers with the new token
-function onAccessTokenFetched(newAccessToken) {
-  subscribers.forEach((callback) => callback(newAccessToken));
+// Notify all subscribers with the refreshed token
+function onAccessTokenFetched() {
+  subscribers.forEach((callback) => callback());
   subscribers = [];
 }
 
-// Function to add subscribers to the queue
+// Add request to subscribers
 function addSubscriber(callback) {
   subscribers.push(callback);
 }
 
-// Response Interceptor
+api.interceptors.request.use((config) => {
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    config.headers['X-XSRF-TOKEN'] = csrfToken;  // Add CSRF token to headers
+  }
+  return config;
+});
+// Axios response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 errors with a single refresh attempt
+    // Handle 401 Unauthorized error for token refresh
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       if (!isRefreshing) {
         isRefreshing = true;
-
         try {
-          // Attempt to refresh the token
-          const response = await axios.post(
-            `${BASE_API_URL}/auth/refresh-token`,
-            {},
-            { withCredentials: true } // Ensure cookies are sent
-          );
-
-          // Update the access token in memory
-          accessToken = response.data.accessToken;
-
-          // Notify all queued requests with the new token
-          onAccessTokenFetched(accessToken);
+          // Attempt to refresh the token using the backend refresh endpoint
+          await axios.post(`${BASE_API_URL}/auth/refresh-token`, {}, { withCredentials: true });
+          onAccessTokenFetched();
         } catch (err) {
-          // If refresh token fails, clear access token and redirect to login
-          clearAccessToken();
-          window.location.href = '/login';
+          window.location.href = '/login';  // Redirect to login if refresh fails
           return Promise.reject(err);
         } finally {
           isRefreshing = false;
         }
       }
 
-      // Queue subsequent requests until the token refresh completes
+      // Queue requests until the token refresh completes
       return new Promise((resolve) => {
-        addSubscriber((newToken) => {
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-          resolve(api(originalRequest));
-        });
+        addSubscriber(() => resolve(api(originalRequest)));
       });
     }
 
-    // Reject any other errors
     return Promise.reject(error);
   }
 );

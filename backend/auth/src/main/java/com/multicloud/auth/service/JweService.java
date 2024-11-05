@@ -171,7 +171,6 @@ public class JweService {
             logger.debug("Private Key Loaded");
             return (RSAPrivateKey) kf.generatePrivate(spec);
         } catch (Exception e) {
-            logger.error("Error loading private key", e);
             throw new PrivateKeyLoadingException("Error loading private key", e);
         }
     }
