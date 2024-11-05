@@ -4,6 +4,7 @@ import com.multicloud.auth.service.JweService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
@@ -14,10 +15,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
-import org.springframework.util.PathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -29,8 +29,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final HandlerExceptionResolver handlerExceptionResolver;
     private final JweService jweService;
     private final UserDetailsService userDetailsService;
-    private final PathMatcher pathMatcher = new AntPathMatcher();
-    private final List<String> excludedPaths = Arrays.asList("/auth/validate-token","/auth/userinfo","/auth/logout","/auth/refresh-token"); // Add any other paths to exclude
+    private static final String JWT_COOKIE_NAME = "jweToken";
+    private final List<String> excludedPaths = Arrays.asList("/auth/validate-token","/auth/userinfo","/auth/logout","/auth/refresh-token","/auth/csrf-token"); // Add any other paths to exclude
     public JwtAuthenticationFilter(
             JweService jweService,
             UserDetailsService userDetailsService,
@@ -44,12 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
-        for (String pattern : excludedPaths) {
-            if (pathMatcher.match(pattern, path)) {
-                return true; // Skip filtering for this path
-            }
-        }
-        return false; // Apply filter for other paths
+        return excludedPaths.stream().anyMatch(path::matches);
     }
 
     @Override
@@ -58,16 +53,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        Cookie jwtCookie = WebUtils.getCookie(request, JWT_COOKIE_NAME);
+        if (jwtCookie == null) {
             filterChain.doFilter(request, response);
             return;
         }
-
         try {
-            final String token = authHeader.substring(7);
-            final String username = jweService.extractUsername(token);
+            String token = jwtCookie.getValue();
+            String username = jweService.extractUsername(token);
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             if (username != null && authentication == null) {
