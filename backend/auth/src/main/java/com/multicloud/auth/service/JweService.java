@@ -102,6 +102,10 @@ public class JweService {
         return extractAllClaims(token).getSubject();
     }
 
+    public String extractEmail(String token){
+        return (String) extractAllClaims(token).getClaim("emailId");
+    }
+
     // Extract all claims from the JWE token
     private JWTClaimsSet extractAllClaims(String token) {
         try {

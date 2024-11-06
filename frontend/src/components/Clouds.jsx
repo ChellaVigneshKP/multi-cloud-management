@@ -4,7 +4,9 @@ import { Box, Button, TextField, MenuItem, Typography, Paper, useMediaQuery, Ico
 import { useTheme } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Layout from './Layout';
-import api from '../api';  // Import the centralized API instance
+import { initializeApi } from '../api';
+
+const api = initializeApi();  // Initialize the centralized API instance
 
 // Function to fetch logos
 const getCloudLogo = (provider) => {
@@ -90,6 +92,7 @@ const Clouds = () => {
       setSuccessMessage(`${cloudProvider.toUpperCase()} cloud account added successfully`);
       setErrorMessage(''); // Clear error message
       setAwsConfig({ accessKeyId: '', secretAccessKey: '', region: '' }); // Clear form fields
+      setCloudProvider(''); // Reset provider selection
       setShowForm(false); // Close the form
       fetchCloudAccounts(); // Refresh the cloud accounts list
     } catch (error) {

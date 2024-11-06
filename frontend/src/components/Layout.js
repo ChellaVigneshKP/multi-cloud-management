@@ -1,4 +1,4 @@
-import React, { useState, useEffect ,useCallback } from 'react';
+import React, { useState ,useCallback, useContext } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -37,27 +37,27 @@ import {
   NotificationImportant as NotificationImportantIcon,
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
-
-import api from '../api';
-
+import { AuthContext } from './AuthContext';
+import CustomLoader from './CustomLoader';
 const drawerWidth = 240;
 
 const Layout = ({ children }) => {
+  // Hooks
   const [anchorEl, setAnchorEl] = useState(null);
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [avatarLetter, setAvatarLetter] = useState('');
-  const [avatarColor, setAvatarColor] = useState('');
-  const theme = useTheme();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+
+  // Functions
   const getColorFromUsername = useCallback((username) => {
     const colors = [
       '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
       '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
       '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800',
-      '#FF5722', '#795548', '#A335AB', '#607D8B'
+      '#FF5722', '#795548', '#A335AB', '#607D8B',
     ];
     let hash = 0;
     for (let i = 0; i < username.length; i++) {
@@ -66,25 +66,23 @@ const Layout = ({ children }) => {
     const index = Math.abs(hash % colors.length);
     return colors[index];
   }, []);
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        // No need to get the apiToken from cookies
-        const response = await api.get('/auth/userinfo');
-        const { username, email } = response.data;
-        setUserName(username);
-        setUserEmail(email);
-        setAvatarLetter(username.charAt(0).toUpperCase());
-        setAvatarColor(getColorFromUsername(username));
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        navigate('/login');
-      }
-    };
-  
-    fetchUserData();
-  }, [navigate, getColorFromUsername]);  
 
+  // Variables dependent on hooks and functions
+  const avatarLetter = user?.username?.charAt(0).toUpperCase() || '';
+  const avatarColor = getColorFromUsername(user?.username || '');
+  const userName = user?.username || '';
+  const userEmail = user?.email || '';
+
+  // Conditional returns
+  if (isAuthenticated === null) {
+    return <CustomLoader />;
+  }
+  if (!isAuthenticated) {
+    navigate('/login');
+    return null;
+  }
+
+  // Handlers
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -105,28 +103,28 @@ const Layout = ({ children }) => {
   const handleLogoutDialogClose = () => {
     setLogoutDialogOpen(false);
   };
+
   const handleLogoutConfirm = async () => {
     try {
-      await api.post('/auth/logout', {}, { withCredentials: true }); // Ensure refresh token is included
-      navigate('/login');
+      await logout(); // Use logout from AuthContext
     } catch (error) {
-      console.error('Logout failed:', error);
+      return;
     } finally {
       setLogoutDialogOpen(false);
     }
-  };  
+  };
 
   const handleProfileClick = () => {
     handleMenuClose();
-    navigate('/profile'); // This will navigate to the profile page
+    navigate('/profile');
   };
 
   const handleSettingsClick = () => {
     handleMenuClose();
-    navigate('/settings'); // This will navigate to the settings page
+    navigate('/settings');
   };
-  const isSmallScreen = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
+  // Component JSX
   return (
     <Box sx={{ display: 'flex' }}>
       {/* AppBar */}
@@ -156,7 +154,7 @@ const Layout = ({ children }) => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ flexGrow: 1 ,fontFamily: `'Comfortaa', sans-serif` }}
+            sx={{ flexGrow: 1, fontFamily: `'Comfortaa', sans-serif` }}
             aria-label="Multi-Cloud Management Dashboard"
           >
             <img
