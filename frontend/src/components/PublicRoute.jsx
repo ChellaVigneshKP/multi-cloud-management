@@ -1,10 +1,10 @@
-// src/components/PrivateRoute.js
+// src/components/PublicRoute.js
 import React, { useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import CustomLoader from './CustomLoader';
 
-const PrivateRoute = () => {
+const PublicRoute = () => {
   const { isAuthenticated } = useContext(AuthContext);
 
   if (isAuthenticated === null) {
@@ -12,7 +12,7 @@ const PrivateRoute = () => {
     return <CustomLoader />;
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+  return isAuthenticated ? <Navigate to="/dashboard" /> : <Outlet />;
 };
 
-export default PrivateRoute;
+export default PublicRoute;

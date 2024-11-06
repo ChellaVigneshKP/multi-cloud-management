@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { LockOutlined as LockOutlinedIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -10,13 +10,13 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useNavigate } from 'react-router-dom';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
-import api from '../api';
 import AuthLayout from '../components/AuthLayout';
 import LoadingButton from '../components/LoadingButton';
-
+import { AuthContext } from '../components/AuthContext';
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const LoginPage = () => {
+  const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +25,7 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   const [visitorId, setVisitorId] = useState(null);
   const navigate = useNavigate();
-
+  
   useEffect(() => {
     document.title = 'C-Cloud | Login';
   }, []);
@@ -56,33 +56,28 @@ const LoginPage = () => {
     return true;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validateForm()) return;
 
-    const formData = { email, password, visitorId, remember };
     setSuccess('');
     setError('');
 
-    api.post('/auth/login', formData)
-      .then(() => {
-        setSuccess('Login successful!');
-        setEmail('');
-        setPassword('');
-        setRemember(false);
-        navigate('/dashboard');
-      })
-      .catch(err => {
-        if (err.response?.data?.message?.includes('Account not verified')) {
-          navigate(`/verify?email=${encodeURIComponent(email)}`);
-        } else if (err.response?.data?.message) {
-          setError(err.response.data.message);
-        } else {
-          setError('An error occurred. Please try again.');
-        }
-      });
+    try {
+      // Use AuthContext login and handle success and error within AuthContext
+      await login({ email, password, visitorId, remember });
+      setSuccess('Login successful!');
+      navigate('/dashboard'); // Redirect to dashboard on successful login
+    } catch (error) {
+      if (error.response?.data?.message?.includes('Account not verified')) {
+        navigate(`/verify?email=${encodeURIComponent(email)}`);
+      } else if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else {
+        setError('An error occurred. Please try again.');
+      }
+    }
   };
-
   return (
     <AuthLayout avatarIcon={<LockOutlinedIcon />} title="Log in" description="">
       <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>

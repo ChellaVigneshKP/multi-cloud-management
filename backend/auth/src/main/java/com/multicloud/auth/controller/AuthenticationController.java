@@ -114,11 +114,13 @@ public class AuthenticationController {
             Duration refreshTokenExpiry = loginUserDto.isRemember() ? Duration.ofDays(30) : Duration.ofDays(7);
             ResponseCookie refreshTokenCookie = CookieUtil.createCookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, refreshTokenExpiry, true, true, "None");
             ResponseCookie jweTokenCookie = CookieUtil.createCookie("jweToken", jweToken, Duration.ofMillis(jweService.getExpirationTime()), true, true, "None");
+            ResponseCookie isAuthenticated = CookieUtil.createCookie("isAuthenticated", "true", refreshTokenExpiry, false, true, "None");
             logger.info("User Logged In Successfully with Email ID: {}", loginUserDto.getEmail());
             LoginResponse loginResponse = new LoginResponse("Login successful");
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, jweTokenCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, isAuthenticated.toString())
                     .body(loginResponse);
         } catch (UsernameNotFoundException e) {
             logger.error("User not found: {}", loginUserDto.getEmail());
@@ -148,7 +150,7 @@ public class AuthenticationController {
             logger.info("User Verified Successfully with Email ID: {}", verifyUserDto.getEmail());
             return ResponseEntity.ok("Account verified successfully");
         } catch (RuntimeException e) {
-            logger.error("Bad Request");
+            logger.error("Bad Request for User Verification");
             return ResponseEntity.badRequest().body(Collections.singletonMap("message", e.getMessage()));
         }
     }
@@ -316,11 +318,13 @@ public class AuthenticationController {
                             tokens.accessToken(),
                             Duration.ofMillis(jweService.getExpirationTime()), true, true,
                             "None");
+            ResponseCookie isAuthenticated = CookieUtil.createCookie("isAuthenticated", "true", maxAgeSeconds, false, true, "None");
             logger.info("Token refreshed successfully for User: {}", user.getUsername());
             LoginResponse loginResponse = new LoginResponse("Token refreshed successfully");
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, jweTokenCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, isAuthenticated.toString())
                     .body(loginResponse);
         } catch (InvalidRefreshTokenException | TokenNotFoundException e) {
             ResponseCookie expiredCookie = CookieUtil.createCookie(REFRESH_TOKEN_COOKIE_NAME, "", 0, true, true, "None");
@@ -349,6 +353,7 @@ public class AuthenticationController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, "refreshToken=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure");
         headers.add(HttpHeaders.SET_COOKIE, "jweToken=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure");
+        headers.add(HttpHeaders.SET_COOKIE, "isAuthenticated=; Max-Age=0; Path=/; SameSite=None; Secure");
         return ResponseEntity.ok().headers(headers).body("Logged out successfully");
     }
 }

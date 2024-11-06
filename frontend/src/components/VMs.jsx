@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext,useCallback } from 'react';
 import {
   Box, Button, Checkbox, FormControlLabel, IconButton, Tooltip,
   Select, MenuItem, InputLabel, FormControl, Typography
@@ -7,21 +7,22 @@ import { DataGrid } from '@mui/x-data-grid';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import Layout from './Layout';
-import api from '../api';
 import noVmsImage from '../assets/images/avatars/vm-not-found.png'
 import awsLogo from '../assets/images/logo/aws-logo.png'
 import azureLogo from '../assets/images/logo/azure-logo.png'
 import gcpLogo from '../assets/images/logo/gcp-logo.png'
 import cloudLoading from '../assets/animations/CloudLoading.json'
 import Lottie from 'lottie-react';
+import { AuthContext } from '../components/AuthContext';  // Update the path if necessary
 const VMs = () => {
+  const { api } = useContext(AuthContext); // Get api from context
   const [instances, setInstances] = useState([]);
   const [selectedInstances, setSelectedInstances] = useState([]);
   const [showTerminated, setShowTerminated] = useState(false);
   const [selectedAction, setSelectedAction] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchInstances = async () => {
+  const fetchInstances = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/vm/aws/ec2');
@@ -32,11 +33,11 @@ const VMs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
 
   useEffect(() => {
     fetchInstances();
-  }, []);
+  }, [fetchInstances]);
 
   const handleRefresh = () => {
     fetchInstances();

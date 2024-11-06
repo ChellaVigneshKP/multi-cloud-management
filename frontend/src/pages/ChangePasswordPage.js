@@ -1,15 +1,14 @@
 // src/pages/ChangePasswordPage.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { LockReset as LockResetIcon } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api';
 import AuthLayout from '../components/AuthLayout';
 import LoadingButton from '../components/LoadingButton';
-
+import {AuthContext} from '../components/AuthContext';
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
 };
@@ -17,6 +16,7 @@ const useQuery = () => {
 const ChangePasswordPage = () => {
   const query = useQuery();
   const navigate = useNavigate();
+  const { api } = useContext(AuthContext);  // Use api from AuthContext
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

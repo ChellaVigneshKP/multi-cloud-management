@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState,useEffect,useContext } from 'react';
 import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
@@ -6,13 +6,14 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
 import AuthLayout from '../components/AuthLayout';
 import LoadingButton from '../components/LoadingButton';
+import {AuthContext} from '../components/AuthContext';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SignupPage = () => {
+  const { api } = useContext(AuthContext);  // Use api from AuthContext
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');

@@ -1,20 +1,20 @@
 // src/pages/ResetPasswordPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useContext } from 'react';
 import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api';
 import AuthLayout from '../components/AuthLayout';
 import LoadingButton from '../components/LoadingButton';
+import {AuthContext} from '../components/AuthContext';
 
 const ResetPasswordPage = () => {
   const query = new URLSearchParams(useLocation().search);
   const token = query.get('token');
   const navigate = useNavigate();
-
+  const { api } = useContext(AuthContext);  // Use api from AuthContext
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
