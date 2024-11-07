@@ -1,7 +1,7 @@
 import boto3
 from db import get_aws_credentials
 import logging
-
+from db import AWS_REGIONS
 
 # Function to get an EC2 client for a specific AWS region
 def get_ec2_client(region):

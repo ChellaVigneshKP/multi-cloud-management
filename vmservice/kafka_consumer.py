@@ -5,6 +5,7 @@ from config import KAFKA_CONFIG
 import logging
 from db import add_user_to_db
 
+
 def consume_kafka_messages():
     """
     Consumes messages from a Kafka topic and processes each message.
