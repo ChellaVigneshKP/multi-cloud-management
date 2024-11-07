@@ -9,7 +9,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Grid,
   Button,
 } from '@mui/material';
 import { useTheme } from '@mui/system';
@@ -20,7 +19,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import Layout from '../components/Layout';
-
+import Grid from '@mui/material/Grid2';
 const ProfilePage = () => {
   const theme = useTheme();
   useEffect(() => {

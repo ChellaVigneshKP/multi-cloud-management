@@ -1,38 +1,22 @@
-// src/components/AuthContext.js
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initializeApi } from '../api';
 import Cookies from 'js-cookie';
+import PropTypes from 'prop-types';
 
 const AuthContext = createContext();
 
-// Variables to manage token refreshing status
 let isRefreshing = false;
-let subscribers = [];
-
-// Notify all subscribers when token is refreshed
-function onAccessTokenFetched() {
-  subscribers.forEach((callback) => callback());
-  subscribers = [];
-}
-
-// Add a request to the subscribers queue
-function addSubscriber(callback) {
-  subscribers.push(callback);
-}
+let refreshTokenPromise = null;
 
 const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const authFlag = Cookies.get('isAuthenticated');
-    return authFlag === 'true';
+    return Cookies.get('isAuthenticated') === 'true';
   });
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
-
-  // Initialize the API instance
   const api = initializeApi();
 
-  // Define `logout` after `api` is initialized
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout', {}, { withCredentials: true });
@@ -46,7 +30,6 @@ const AuthProvider = ({ children }) => {
     }
   }, [api, navigate]);
 
-  // Set up the interceptor after `logout` is defined
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
@@ -59,34 +42,39 @@ const AuthProvider = ({ children }) => {
           !originalRequest._retry &&
           !originalRequest.url.includes('/auth/refresh-token') &&
           !originalRequest.url.includes('/auth/login') &&
-          isAuthenticated // Check if user is authenticated
+          isAuthenticated
         ) {
           originalRequest._retry = true;
 
           if (!isRefreshing) {
             isRefreshing = true;
-            try {
-              await api.post('/auth/refresh-token', {}, { withCredentials: true });
-              onAccessTokenFetched();
-            } catch (err) {
-              await logout();
-              return Promise.reject(err);
-            } finally {
-              isRefreshing = false;
-            }
+            refreshTokenPromise = api.post('/auth/refresh-token', {}, { withCredentials: true })
+              .then(() => {
+                isRefreshing = false;
+              })
+              .catch(async (err) => {
+                isRefreshing = false;
+                await logout();
+                return Promise.reject(new Error('Token refresh failed'));
+              });
           }
 
-          // Wait until the token refresh completes before retrying the request
-          return new Promise((resolve) => {
-            addSubscriber(() => resolve(api(originalRequest)));
-          });
+          try {
+            // Wait for the token refresh to complete
+            await refreshTokenPromise;
+
+            // Retry the original request
+            return api(originalRequest);
+          } catch (err) {
+            console.error('Error retrying original request after token refresh:', err); // Log the error or take action
+            throw err; // Reject the Promise with an Error
+          }
         }
 
-        return Promise.reject(error);
+        return Promise.reject(error instanceof Error ? error : new Error(error));
       }
     );
 
-    // Eject the interceptor when the component unmounts
     return () => {
       api.interceptors.response.eject(interceptor);
     };
@@ -103,29 +91,40 @@ const AuthProvider = ({ children }) => {
     }
   }, [api]);
 
-  // Fetch user data if authenticated and user data is not already loaded
   useEffect(() => {
     if (isAuthenticated && !user) {
       fetchUserData();
     }
   }, [isAuthenticated, user, fetchUserData]);
 
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     try {
       await api.post('/auth/login', credentials, { withCredentials: true });
       Cookies.set('isAuthenticated', 'true', { expires: 7, path: '/' });
       setIsAuthenticated(true);
-      await fetchUserData(); // Fetch user data after successful login
+      await fetchUserData();
     } catch (error) {
-      throw error; // Re-throw the error to be handled in the login page
+      throw new Error('Login failed');
     }
-  };
+  }, [api, fetchUserData]);
+
+  const contextValue = useMemo(() => ({
+    isAuthenticated,
+    user,
+    login,
+    logout,
+    api,
+  }), [isAuthenticated, user, login, logout, api]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, api }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export { AuthContext, AuthProvider };

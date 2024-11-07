@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext,useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   Box, Button, Checkbox, FormControlLabel, IconButton, Tooltip,
   Select, MenuItem, InputLabel, FormControl, Typography
@@ -14,6 +14,88 @@ import gcpLogo from '../assets/images/logo/gcp-logo.png'
 import cloudLoading from '../assets/animations/CloudLoading.json'
 import Lottie from 'lottie-react';
 import { AuthContext } from '../components/AuthContext';  // Update the path if necessary
+const CustomNoRowsOverlay = () => {
+  return (
+    <Box
+      sx={{
+        textAlign: 'center',
+        p: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      }}
+    >
+      <Box
+        component="img"
+        src={noVmsImage}
+        alt="No VMs Found"
+        sx={{ width: 200, height: 150, mb: 2 }}
+      />
+      <Typography variant="h6" gutterBottom>
+        No VMs available. Add a cloud account or launch a new instance.
+      </Typography>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => window.location.href = '/clouds'}
+      >
+        Add New Cloud Account
+      </Button>
+    </Box>
+  );
+};
+
+const CustomLoadingOverlay = () => (
+  <Box
+    sx={{
+      textAlign: 'center',
+      p: 3,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)', // Optional: add semi-transparent background
+    }}
+  >
+    <Box
+      sx={{
+        position: 'relative',
+        top: '-60px', // Moves the element 20px down from the top
+        padding: '10px',
+      }}
+    >
+      <Lottie animationData={cloudLoading} style={{ width: '180px', height: '180px' }} />
+    </Box>
+    <Typography variant="h6" gutterBottom style={{ marginTop: '-100px' }}>
+      Loading VM's <AnimatedDots />
+    </Typography>
+    <style>
+      {`
+      @keyframes dots {
+        0%, 20% { color: transparent; }
+        40% { color: black; }
+        60%, 100% { color: transparent; }
+      }
+    `}
+    </style>
+  </Box>
+);
+
+const AnimatedDots = () => (
+  <span style={{ display: 'inline-block', marginLeft: '4px' }}>
+    <span style={{ animation: 'dots 1.5s steps(3, end) infinite' }}>...</span>
+  </span>
+);
+
+const logoMap = {
+  'AWS': awsLogo,
+  'Azure': azureLogo,
+  'GCP': gcpLogo,
+};
+
 const VMs = () => {
   const { api } = useContext(AuthContext); // Get api from context
   const [instances, setInstances] = useState([]);
@@ -21,7 +103,7 @@ const VMs = () => {
   const [showTerminated, setShowTerminated] = useState(false);
   const [selectedAction, setSelectedAction] = useState('');
   const [loading, setLoading] = useState(true);
-
+  console.log({ awsLogo, azureLogo, gcpLogo, noVmsImage, cloudLoading });
   const fetchInstances = useCallback(async () => {
     setLoading(true);
     try {
@@ -52,10 +134,9 @@ const VMs = () => {
     setShowTerminated(e.target.checked);
   };
 
-  const filteredInstances = instances.filter((instance) => {
-    if (!showTerminated && instance.state === 'terminated') return false;
-    return true;
-  });
+  const filteredInstances = instances.filter(
+    (instance) => showTerminated || instance.state !== 'terminated'
+  );
 
   const totalInstances = instances.length;
   const runningInstances = instances.filter((instance) => instance.state === 'running').length;
@@ -109,13 +190,8 @@ const VMs = () => {
       headerName: 'Provider',
       renderCell: (params) => {
         const provider = params.value;
-
         // Define logo based on provider name
-        const logoSrc = provider === 'AWS' ? awsLogo
-          : provider === 'Azure' ? azureLogo
-            : provider === 'GCP' ? gcpLogo
-              : null;
-
+        const logoSrc = logoMap[provider] || null;
         return (
           <Tooltip title={provider}>
             <Box display="flex" alignItems="center">
@@ -279,80 +355,6 @@ const VMs = () => {
   // Prepare rows for DataGrid
   const rows = filteredInstances.map((vm) => ({ id: vm.instanceId, ...vm }));
   // Custom No Rows Overlay
-  const AnimatedDots = () => (
-    <span style={{ display: 'inline-block', marginLeft: '4px' }}>
-      <span style={{ animation: 'dots 1.5s steps(3, end) infinite' }}>...</span>
-    </span>
-  );
-  const CustomLoadingOverlay = () => (
-    <Box
-      sx={{
-        textAlign: 'center',
-        p: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)', // Optional: add semi-transparent background
-      }}
-    >
-      <Box
-        sx={{
-          position: 'relative',
-          top: '-60px', // Moves the element 20px down from the top
-          padding: '10px',
-        }}
-      >
-        <Lottie animationData={cloudLoading} style={{ width: '180px', height: '180px' }} />
-      </Box>
-      <Typography variant="h6" gutterBottom style={{ marginTop: '-100px' }}>
-        Loading VM's <AnimatedDots />
-      </Typography>
-      <style>
-        {`
-        @keyframes dots {
-          0%, 20% { color: transparent; }
-          40% { color: black; }
-          60%, 100% { color: transparent; }
-        }
-      `}
-      </style>
-    </Box>
-  );
-
-  const CustomNoRowsOverlay = () => {
-    return (
-      <Box
-        sx={{
-          textAlign: 'center',
-          p: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-        }}
-      >
-        <Box
-          component="img"
-          src={noVmsImage}
-          alt="No VMs Found"
-          sx={{ width: 200, height: 150, mb: 2 }}
-        />
-        <Typography variant="h6" gutterBottom>
-          No VMs available. Add a cloud account or launch a new instance.
-        </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => window.location.href = '/clouds'}
-        >
-          Add New Cloud Account
-        </Button>
-      </Box>
-    );
-  };
 
   return (
     <Layout>
