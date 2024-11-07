@@ -18,7 +18,7 @@ function ContactUsPage() {
   });
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [errorSnackbar, setErrorSnackbar] = useState(false); 
+  const [errorSnackbar, setErrorSnackbar] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormValues({ ...formValues, [name]: value });
@@ -92,29 +92,29 @@ function ContactUsPage() {
         }}
       />
       <Box sx={{ position: 'absolute', top: '20px', left: '20px' }}>
-  <Button
-    component={Link}
-    to="/"
-    variant="outlined"
-    sx={{
-      minWidth: 0, // Keeps the button circular
-      width: 40,
-      height: 40,
-      borderRadius: '50%',
-      color: '#00445d',
-      borderColor: '#00445d',
-      '&:hover': {
-        backgroundColor: '#e8f0f2',
-        borderColor: '#00445d',
-      },
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}
-  >
-    <HomeIcon />
-  </Button>
-</Box>
+        <Button
+          component={Link}
+          to="/"
+          variant="outlined"
+          sx={{
+            minWidth: 0, // Keeps the button circular
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            color: '#00445d',
+            borderColor: '#00445d',
+            '&:hover': {
+              backgroundColor: '#e8f0f2',
+              borderColor: '#00445d',
+            },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <HomeIcon />
+        </Button>
+      </Box>
 
       <Typography
         variant="h3"
@@ -268,16 +268,16 @@ function ContactUsPage() {
           </Box>
           {/* Social Media Icons */}
           <Box display="flex" alignItems="center" gap={2}>
-            <a href="https://facebook.com/yourprofile" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.facebook.com/profile.php?id=100008159434260" target="_blank" rel="noopener noreferrer">
               <FacebookIcon sx={{ color: '#4267B2', fontSize: 30, '&:hover': { color: '#365899' } }} />
             </a>
-            <a href="https://twitter.com/yourprofile" target="_blank" rel="noopener noreferrer">
+            <a href="https://x.com/ChellaVignesh6" target="_blank" rel="noopener noreferrer">
               <TwitterIcon sx={{ color: '#1DA1F2', fontSize: 30, '&:hover': { color: '#0d95e8' } }} />
             </a>
-            <a href="https://instagram.com/yourprofile" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.instagram.com/c_v_kp" target="_blank" rel="noopener noreferrer">
               <InstagramIcon sx={{ color: '#E1306C', fontSize: 30, '&:hover': { color: '#bc2a8d' } }} />
             </a>
-            <a href="https://linkedin.com/in/yourprofile" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.linkedin.com/in/chella-vignesh-k-p" target="_blank" rel="noopener noreferrer">
               <LinkedInIcon sx={{ color: '#0077B5', fontSize: 30, '&:hover': { color: '#005582' } }} />
             </a>
           </Box>

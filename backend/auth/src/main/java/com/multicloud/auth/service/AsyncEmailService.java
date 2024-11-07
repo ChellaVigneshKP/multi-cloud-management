@@ -87,7 +87,7 @@ public class AsyncEmailService {
                 browser,
                 formattedLoginTime
         );
-        String subject = "New Login on MultiCloud from "+browser+" on "+os;
+        String subject = "New Login on C-Cloud from "+browser+" on "+os;
         try {
             emailService.sendIpChangeAlertEmail(loginAlertDto.getUser().getEmail(), subject, loginAlertDto);  // Pass loginAlertDto instead of htmlMessage
             logger.info("Login alert email sent successfully to '{}'", loginAlertDto.getUser().getEmail());
