@@ -7,10 +7,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  Grid,
   Switch,
   FormControlLabel,
 } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import Layout from '../components/Layout';
 const SettingsPage = () => {
   useEffect(() => {

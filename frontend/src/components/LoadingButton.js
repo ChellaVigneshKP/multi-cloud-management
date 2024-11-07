@@ -32,6 +32,7 @@ const LoadingButton = ({ loading = false, children, ...props }) => (
 LoadingButton.propTypes = {
   loading: PropTypes.bool,
   children: PropTypes.node.isRequired,
+  disabled: PropTypes.bool,
 };
 
 export default LoadingButton;

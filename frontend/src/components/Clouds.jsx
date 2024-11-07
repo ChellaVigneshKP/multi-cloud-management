@@ -146,9 +146,9 @@ const Clouds = () => {
         >
           {/* Display existing cloud accounts */}
           {cloudAccounts.length > 0 ? (
-            cloudAccounts.map((account, index) => (
+            cloudAccounts.map((account) => (
               <Paper
-                key={index}
+                key={account.id}
                 sx={{
                   border: '1px solid #ccc',
                   borderRadius: 2,

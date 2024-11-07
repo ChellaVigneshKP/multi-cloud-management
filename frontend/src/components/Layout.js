@@ -1,6 +1,5 @@
-import React, { useState ,useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
-  AppBar,
   Toolbar,
   Typography,
   IconButton,
@@ -39,8 +38,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import CustomLoader from './CustomLoader';
+import PropTypes from 'prop-types';
 const drawerWidth = 240;
-
 const Layout = ({ children }) => {
   // Hooks
   const [anchorEl, setAnchorEl] = useState(null);
@@ -128,13 +127,14 @@ const Layout = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
       {/* AppBar */}
-      <AppBar
-        position="fixed"
-        color="primary"
-        sx={{
+      <header
+        style={{
+          position: 'fixed',
+          width: '100%',
           zIndex: theme.zIndex.drawer + 1,
+          backgroundColor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
         }}
-        role="banner"
       >
         <Toolbar>
           {/* Menu Button */}
@@ -211,7 +211,7 @@ const Layout = ({ children }) => {
             </Avatar>
           </IconButton>
         </Toolbar>
-      </AppBar>
+      </header>
 
       {/* Drawer */}
       <Drawer
@@ -230,14 +230,13 @@ const Layout = ({ children }) => {
         aria-label="Side Navigation"
       >
         <Toolbar />
-        <Box
-          sx={{
+        <nav
+          style={{
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
             overflow: 'auto',
           }}
-          role="navigation"
           aria-label="Main Navigation Links"
         >
           <List>
@@ -298,7 +297,7 @@ const Layout = ({ children }) => {
                 variant="body2"
                 color="textSecondary"
                 align="center"
-                sx={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center',fontFamily: `'Comfortaa', sans-serif` }}
+                sx={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', fontFamily: `'Comfortaa', sans-serif` }}
               >
                 <span style={{ marginRight: 4 }}>©</span>
                 {' '}
@@ -307,12 +306,12 @@ const Layout = ({ children }) => {
                   chellavignesh.com
                 </MuiLink>
               </Typography>
-              <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5,fontFamily: `'Comfortaa', sans-serif` }}>
-              Centralize Your Clouds. <br/>Streamline Your Management.
+              <Typography variant="caption" color="textSecondary" align="center" sx={{ mt: 0.5, fontFamily: `'Comfortaa', sans-serif` }}>
+                Centralize Your Clouds. <br />Streamline Your Management.
               </Typography>
             </Box>
           </Box>
-        </Box>
+        </nav>
       </Drawer>
 
       {/* Account Menu */}
@@ -390,5 +389,7 @@ const Layout = ({ children }) => {
     </Box>
   );
 };
-
+Layout.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 export default Layout;
