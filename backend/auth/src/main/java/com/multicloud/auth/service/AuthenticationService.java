@@ -210,7 +210,7 @@ public class AuthenticationService {
 
     // Method to send verification email
     private void sendVerificationEmail(User user) {
-        String subject = "Account Verification";  // Email subject
+        String subject = "Account Verification Required for C-Cloud";  // Email subject
         try {
             emailService.sendVerificationEmail(user.getEmail(), subject, user);  // Send the email
             logger.info("Email sent successfully to mail id '{}'", user.getEmail());

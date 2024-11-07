@@ -42,15 +42,17 @@ public class EmailService {
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
         context.setVariable("verificationCode", user.getVerificationCode());  // Removed the prefix
+        context.setVariable("logo", logoUrl);
         sendEmail(to, subject, "verification-email", context);
     }
 
     public void sendPasswordResetEmail(User user) throws MessagingException {
         String to = user.getEmail();
-        String subject = "Password Reset Request";
+        String subject = "Password Reset Request for C-Cloud Account";
         String resetLink = frontendBaseUrl+"/reset-password?token=" + user.getPasswordResetToken(); // Use HTTPS and configurable URL
         Context context = new Context();
         context.setVariable("firstName", user.getFirstName());
+        context.setVariable("logo", logoUrl);
         context.setVariable("resetLink", resetLink);
         sendEmail(to, subject, "password-reset-email", context);
     }
