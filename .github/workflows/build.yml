@@ -1,65 +1,65 @@
-name: Build
+# name: Build
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
 
-jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
+# jobs:
+#   build:
+#     name: Build and analyze
+#     runs-on: ubuntu-latest
     
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 21
-        uses: actions/setup-java@v1
-        with:
-          java-version: 21
-      - name: Cache SonarQube packages
-        uses: actions/cache@v1
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache Maven packages
-        uses: actions/cache@v1
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Build and Analyze service-registry
-        working-directory: backend/service-registry
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
-      - name: Build and Analyze api-gateway
-        working-directory: backend/api-gateway
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
-      - name: Build and Analyze auth-service
-        working-directory: backend/auth
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-      - name: Cache Node.js packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      - name: Build and Analyze frontend
-        working-directory: frontend
-        run: npm ci && npm run build
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+#       - name: Set up JDK 21
+#         uses: actions/setup-java@v1
+#         with:
+#           java-version: 21
+#       - name: Cache SonarQube packages
+#         uses: actions/cache@v1
+#         with:
+#           path: ~/.sonar/cache
+#           key: ${{ runner.os }}-sonar
+#           restore-keys: ${{ runner.os }}-sonar
+#       - name: Cache Maven packages
+#         uses: actions/cache@v1
+#         with:
+#           path: ~/.m2
+#           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+#           restore-keys: ${{ runner.os }}-m2
+#       - name: Build and Analyze service-registry
+#         working-directory: backend/service-registry
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
+#       - name: Build and Analyze api-gateway
+#         working-directory: backend/api-gateway
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
+#       - name: Build and Analyze auth-service
+#         working-directory: backend/auth
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ChellaVigneshKP_multi-cloud-management_4ffd9aae-0e6e-49f3-9592-c5aa71277e27 -Dsonar.projectName='multi-cloud-management'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: 20
+#       - name: Cache Node.js packages
+#         uses: actions/cache@v3
+#         with:
+#           path: ~/.npm
+#           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
+#           restore-keys: |
+#             ${{ runner.os }}-node-
+#       - name: Build and Analyze frontend
+#         working-directory: frontend
+#         run: npm ci && npm run build
