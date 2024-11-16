@@ -37,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/auth/resend", "/auth/forgot-password", "/auth/reset-password",
             "/auth/refresh-token", "/auth/logout", "/auth/take-action",
             "/auth/health", "/auth/actuator/health", "/auth/actuator/prometheus",
-            "/auth/v3/**", "/auth/swagger-ui/**"
+            "/auth/v3/**", "/auth/swagger-ui/**", "/actuator/**"
     );
 
     public JwtAuthenticationFilter(JweService jweService, UserDetailsService userDetailsService) {
