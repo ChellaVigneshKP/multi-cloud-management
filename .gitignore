@@ -67,7 +67,7 @@ frontend/.env
 
 # --- API Gateway ---
 /backend/**/.env
-
+/backend/**/*.jks
 /vmservice/.idea
 /vmservice/.venv
 /vmservice/__pycache__

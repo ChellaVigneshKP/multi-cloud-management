@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.multicloud</groupId>
-	<artifactId>api-gateway</artifactId>
+	<artifactId>config-server</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>api-gateway</name>
-	<description>Gateway for Multi-Cloud Application</description>
+	<name>config-server</name>
+	<description>Config Server for C-Cloud Application</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -32,62 +32,16 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-config-server</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-config</artifactId>
-			<version>4.1.3</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-gateway</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-loadbalancer</artifactId>
+			<artifactId>spring-cloud-starter-vault-config</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-api</artifactId>
-			<version>0.12.6</version>
-		</dependency>
-		<dependency>
-			<groupId>com.nimbusds</groupId>
-			<artifactId>nimbus-jose-jwt</artifactId>
-			<version>9.46</version>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-impl</artifactId>
-			<version>0.12.6</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId>
-			<version>0.12.6</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>de.codecentric</groupId>
@@ -95,15 +49,23 @@
 			<version>3.3.3</version>
 		</dependency>
 		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-core</artifactId>
-			<version>5.14.2</version>
-			<scope>test</scope>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-rsa</artifactId>
+			<version>1.1.5</version>
 		</dependency>
 		<dependency>
 			<groupId>me.paulschwarz</groupId>
 			<artifactId>spring-dotenv</artifactId>
 			<version>4.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
