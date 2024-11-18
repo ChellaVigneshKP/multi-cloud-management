@@ -1,52 +1,68 @@
 package com.multicloud.auth.config;
 
 import com.multicloud.auth.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
-@Configuration  // Indicates that this class contains Spring configuration
+import java.util.List;
+
+@Configuration
 public class ApplicationConfiguration {
-    private final UserRepository userRepository;  // Repository for accessing user data
+    private final UserRepository userRepository;
 
-    // Constructor to inject the UserRepository dependency
     public ApplicationConfiguration(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
-    // Bean for UserDetailsService to load user-specific data
+    @Value("${spring.security.user.name}")
+    private String username;
+
+    @Value("${spring.security.user.password}")
+    private String password;
+
+    @Value("${spring.security.user.roles}")
+    private String roles;
+
     @Bean
-    UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username)  // Find user by email
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));  // Throw exception if user not found
+    public UserDetailsService userDetailsService() {
+        // In-memory user for Basic Authentication
+        InMemoryUserDetailsManager inMemoryUserDetailsManager = new InMemoryUserDetailsManager();
+        inMemoryUserDetailsManager.createUser(
+                User.withUsername(username)
+                        .password(passwordEncoder().encode(password))
+                        .roles(roles)
+                        .build()
+        );
+
+        // Database-backed UserDetailsService
+        UserDetailsService databaseUserDetailsService = username -> userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        // Composite UserDetailsService
+        return new CompositeUserDetailsService(
+                List.of(inMemoryUserDetailsManager, databaseUserDetailsService)
+        );
     }
 
-    // Bean for password encoder using BCrypt
     @Bean
-    BCryptPasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();  // Returns a BCryptPasswordEncoder instance
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
-    // Bean for AuthenticationManager to handle authentication processes
+    // AuthenticationProvider bean
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();  // Retrieves the authentication manager from the configuration
-    }
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 
-    // Bean for AuthenticationProvider using DaoAuthenticationProvider
-    @Bean
-    AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();  // Create a new DaoAuthenticationProvider
+        authProvider.setUserDetailsService(userDetailsService());
+        authProvider.setPasswordEncoder(passwordEncoder());
 
-        authProvider.setUserDetailsService(userDetailsService());  // Set the user details service
-        authProvider.setPasswordEncoder(passwordEncoder());  // Set the password encoder
-
-        return authProvider;  // Return the configured authentication provider
+        return authProvider;
     }
 }

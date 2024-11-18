@@ -9,10 +9,13 @@ import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.lang.NonNull; // Import the NonNull annotation
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -55,19 +58,23 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     logger.info("Request from IPv4: {}, IPv6: {} to Path: {}", ipAddressV4, ipAddressV6, requestPath);
                     logger.info("Request from IPv4: {}, IPv6: {}, Username: {}, Email: {}, UserId: {}", ipAddressV4, ipAddressV6, username, email, userId);
 
-                    // Remove existing headers to prevent header injection
-                    ServerHttpRequest modifiedRequest = request.mutate()
-                            .headers(httpHeaders -> {
-                                httpHeaders.remove("X-User-Name");
-                                httpHeaders.remove("X-User-Email");
-                                httpHeaders.remove("X-User-Id");
-                            })
-                            .header("X-User-Name", username)
-                            .header("X-User-Email", email)
-                            .header("X-User-Id", userId)
-                            .header("X-User-IP", ipAddressV4) // Add client IPv4 to headers
-                            .header("X-User-IP-V6", ipAddressV6) // Add client IPv6 to headers
-                            .build();
+                    // Create a modified request with additional headers
+                    ServerHttpRequest modifiedRequest = new ServerHttpRequestDecorator(request) {
+                        @Override
+                        public @NonNull HttpHeaders getHeaders() {
+                            HttpHeaders headers = new HttpHeaders();
+                            headers.putAll(super.getHeaders());
+                            headers.remove("X-User-Name");
+                            headers.remove("X-User-Email");
+                            headers.remove("X-User-Id");
+                            headers.add("X-User-Name", username);
+                            headers.add("X-User-Email", email);
+                            headers.add("X-User-Id", userId);
+                            headers.add("X-User-IP", ipAddressV4); // Add client IPv4
+                            headers.add("X-User-IP-V6", ipAddressV6); // Add client IPv6
+                            return headers;
+                        }
+                    };
                     // Continue the filter chain with the modified request
                     return chain.filter(exchange.mutate().request(modifiedRequest).build());
 
@@ -81,10 +88,18 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 String ipAddressV4 = clientIpAddresses[0];
                 String ipAddressV6 = clientIpAddresses[1];
                 logger.info("Request to unsecured path from IPv4: {}, IPv6: {} to Path: {}", ipAddressV4, ipAddressV6, requestPath);
-                ServerHttpRequest modifiedRequest = request.mutate()
-                        .header("X-User-IP", ipAddressV4)  // Add client IPv4
-                        .header("X-User-IP-V6", ipAddressV6)  // Add client IPv6
-                        .build();
+
+                // Create a modified request with additional headers
+                ServerHttpRequest modifiedRequest = new ServerHttpRequestDecorator(request) {
+                    @Override
+                    public @NonNull HttpHeaders getHeaders() {
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.putAll(super.getHeaders());
+                        headers.add("X-User-IP", ipAddressV4);  // Add client IPv4
+                        headers.add("X-User-IP-V6", ipAddressV6);  // Add client IPv6
+                        return headers;
+                    }
+                };
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
             }
         };
