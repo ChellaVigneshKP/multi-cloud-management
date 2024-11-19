@@ -14,7 +14,7 @@ C-Cloud is a microservice-based application that enables users to manage virtual
 ![architecture](Archi2.png)
 
 ### Technologies Used
-- Spring Boot (Java) for Auth, Admin Server and Gateway services
+- Spring Boot (Java) for Auth, Admin Server , Config Server and Gateway services
 - Flask (Python) for VM management
 - Eureka for service discovery
 - Kafka for event-driven communication
