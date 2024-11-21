@@ -33,7 +33,22 @@ jobs:
 
       - name: Snyk Code test (Frontend)
         working-directory: ./frontend
-        run: snyk code test --sarif > snyk-code-frontend.sarif || true
+        run: snyk code test ./src --sarif > src/snyk-code-frontend.sarif || true
+
+      - name: Verify SARIF file existence (Frontend)
+        run: |
+          if [ ! -f frontend/src/snyk-code-frontend.sarif ]; then
+            echo "SARIF file not found for Frontend. Skipping upload.";
+            exit 1;
+          fi
+
+      - name: Move SARIF file to frontend root
+        run: mv frontend/src/snyk-code-frontend.sarif frontend/snyk-code-frontend.sarif
+
+      - name: Upload SARIF results to GitHub (Frontend)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: frontend/snyk-code-frontend.sarif
 
       - name: Snyk Open Source monitor (Frontend)
         working-directory: ./frontend
@@ -73,12 +88,6 @@ jobs:
       - name: Snyk Open Source monitor (VMService)
         working-directory: ./vmservice
         run: snyk monitor || true
-
-      # Step 7: Push SARIF results to GitHub
-      - name: Upload SARIF results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk-code-frontend.sarif
 
       - name: Upload SARIF results to GitHub (VMService)
         uses: github/codeql-action/upload-sarif@v3
