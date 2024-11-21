@@ -16,16 +16,17 @@ jobs:
       security-events: write
     runs-on: ubuntu-latest
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Set up Snyk CLI
+      # Step 2: Set up Snyk CLI
       - name: Set up Snyk CLI
         uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      # Step 1: Scan the Frontend (Node.js)
+      # Step 3: Scan the Frontend (Node.js)
       - name: Install dependencies (Frontend)
         working-directory: ./frontend
         run: npm install
@@ -38,7 +39,14 @@ jobs:
         working-directory: ./frontend
         run: snyk monitor || true
 
-      # Step 2: Scan the Backend (Java/Maven)
+      # Step 4: Set up Java 21 for Backend (Java/Maven)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: temurin
+
+      # Step 5: Scan the Backend (Java/Maven)
       - name: Build and scan backend services
         run: |
           for service in backend/*; do
@@ -50,7 +58,7 @@ jobs:
             fi
           done
 
-      # Step 3: Scan the VMService (Python)
+      # Step 6: Scan the VMService (Python)
       - name: Install dependencies (VMService)
         working-directory: ./vmservice
         run: |
@@ -66,7 +74,7 @@ jobs:
         working-directory: ./vmservice
         run: snyk monitor || true
 
-      # Step 4: Push SARIF results to GitHub
+      # Step 7: Push SARIF results to GitHub
       - name: Upload SARIF results to GitHub
         uses: github/codeql-action/upload-sarif@v3
         with:
