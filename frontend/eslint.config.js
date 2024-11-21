@@ -19,7 +19,10 @@ export default [
       react,
     },
     rules: {
+      'no-unused-vars': 'warn', // Flag unused variables
       'react/prop-types': 'off', // Disable PropTypes validation
+      'react/jsx-uses-react': 'off', // React 17+ JSX transform
+      'react/react-in-jsx-scope': 'off', // React 17+ JSX transform
     },
     settings: {
       react: {
