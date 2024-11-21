@@ -1,43 +1,72 @@
 package com.multicloud.auth.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@Configuration  // Marks this class as a configuration class for Spring
-@EnableWebSecurity  // Enables Spring Security’s web security support
-public class SecurityConfiguration {
-    private final AuthenticationProvider authenticationProvider;  // Provider for authentication
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;  // Custom JWT authentication filter
+import java.util.List;
 
-    public SecurityConfiguration(
-            JwtAuthenticationFilter jwtAuthenticationFilter,
-            AuthenticationProvider authenticationProvider
-    ) {
-        this.authenticationProvider = authenticationProvider;
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfiguration {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthenticationProvider authenticationProvider;
+
+    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter,
+                                 AuthenticationProvider authenticationProvider) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationProvider = authenticationProvider;
     }
 
-    @Bean  // Indicates that this method produces a bean to be managed by the Spring container
+    @Value("${spring.security.user.roles}")
+    private String roles;
+
+    // Define the AuthenticationManager bean
+    @Bean
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(List.of(authenticationProvider));
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF protection for stateless APIs
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/**", "/actuator/**").permitAll()  // Allow public access to authentication endpoints
-                        .anyRequest().authenticated()  // Require authentication for all other requests
-                )
+                // Disable CSRF for APIs
+                .csrf(AbstractHttpConfigurer::disable)
+                // Set session management to stateless
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // Set session management to stateless
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authenticationProvider(authenticationProvider)  // Set the custom authentication provider
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // Add the JWT filter before the username/password filter
+                // Set authorization rules
+                .authorizeHttpRequests(auth -> auth
+                        // Allow public access to /auth/**
+                        .requestMatchers("/auth/**").permitAll()
+                        // Require ADMINSERVER role for /actuator/**
+                        .requestMatchers("/actuator/**").hasRole(roles)
+                        // Require authentication for all other requests
+                        .anyRequest().authenticated()
+                )
+                // Use Basic Auth for /actuator/**
+                .httpBasic(Customizer.withDefaults())
+                // Add the custom authentication provider
+                .authenticationProvider(authenticationProvider);
 
-        return http.build();  // Build and return the security filter chain
+        // Add JWT filter before UsernamePasswordAuthenticationFilter
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 }

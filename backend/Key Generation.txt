@@ -1,0 +1,13 @@
+mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 KPCV "*.local"
+openssl pkcs12 -export -in cert.pem -inkey key.pem -out keystore.p12 -name "mkcert-cert" -password pass:changeit
+
+keytool -importkeystore \
+    -destkeystore keystore.jks \
+    -srckeystore keystore.p12 \
+    -srcstoretype PKCS12 \
+    -alias mkcert-cert \
+    -storepass changeit \
+    -srcstorepass changeit
+
+keytool -importcert -trustcacerts -keystore <JAVA_HOME>/lib/security/cacerts \
+    -file cert.pem -alias mkcert-cert -storepass changeit
