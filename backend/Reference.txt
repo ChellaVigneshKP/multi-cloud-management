@@ -210,5 +210,3 @@ Whether a **Config Server** or other services are important depends on your spec
 - If you need to securely manage sensitive data like API keys or database credentials.
 
 ---
-
-Let me know if you'd like help setting up any of these additional services!
