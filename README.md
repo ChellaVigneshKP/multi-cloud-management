@@ -3,7 +3,7 @@
 ### Centralize your Cloud, Streamline your Experience.
 
 ## Description
-C-Cloud is a microservice-based application that enables users to manage virtual machines (VMs) across multiple cloud providers, including AWS, GCP, and Azure. Users can easily add their cloud accounts and manage their VMs from a single interface.
+C-Cloud is a microservice-based application that enables users to manage virtual machines (VMs) across multiple cloud providers, including AWS, GCP, and Azure. Users can easily add their cloud accounts and manage their VMs from a single interface. 
 
 ## Installation Instructions
 
