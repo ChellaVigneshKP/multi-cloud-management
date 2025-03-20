@@ -106,3 +106,4 @@ Once the application is running, users can interact with the UI to add their clo
 
 ### Docker/Cloud-Based Setup Results
 ![UI Screenshot](result.png)
+
