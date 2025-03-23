@@ -100,6 +100,7 @@ Once the application is running, users can interact with the UI to add their clo
 - **HTTP Request Performance**:
   ```
   Label           # Samples  Error %
+  
   HTTP Request    300        0.00%
   TOTAL           300        0.00%
   ```
