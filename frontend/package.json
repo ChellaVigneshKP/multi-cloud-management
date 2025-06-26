@@ -42,6 +42,7 @@
     "@types/react-toastify": "^4.0.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
+    "sonarqube-scanner": "^4.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
