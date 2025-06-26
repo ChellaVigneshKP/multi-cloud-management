@@ -2,7 +2,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import CustomLoader from './components/CustomLoader';
+import CustomLoader from './components/CustomLoader.jsx';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -41,7 +41,7 @@ function App() {
           </Route>
           <Route path="/contact-us" element={<ContactUsPage />} />
 
-          <Route element={<PrivateRoute />}>
+          <Route element={<PublicRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/vms" element={<VMsPage />} />
             <Route path="/clouds" element={<CloudsPage />} />

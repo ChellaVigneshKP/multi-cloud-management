@@ -259,7 +259,7 @@ public class AuthenticationController {
             return ResponseEntity.ok(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
         } catch (IllegalArgumentException e) {
             logger.error("Error processing mail for Change Password with Mail Id: {}", request.getEmail());
-            return ResponseEntity.status(HttpStatus.OK).body(new SuccessResponse("A reset link has been sent to your email " + request.getEmail()));
+            return ResponseEntity.ok(new SuccessResponse("If an account with that email exists, a reset link has been sent."));
         }
     }
 

@@ -21,7 +21,7 @@ public class ApplicationConfiguration {
     }
 
     @Value("${spring.security.user.name}")
-    private String username;
+    private String userName;
 
     @Value("${spring.security.user.password}")
     private String password;
@@ -31,20 +31,19 @@ public class ApplicationConfiguration {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        // In-memory user for Basic Authentication
         InMemoryUserDetailsManager inMemoryUserDetailsManager = new InMemoryUserDetailsManager();
         inMemoryUserDetailsManager.createUser(
-                User.withUsername(username)
+                User.withUsername(userName)
                         .password(passwordEncoder().encode(password))
                         .roles(roles)
                         .build()
         );
 
-        // Database-backed UserDetailsService
-        UserDetailsService databaseUserDetailsService = username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        UserDetailsService databaseUserDetailsService = username ->
+                userRepository.findByEmail(username)
+                        .or(() -> userRepository.findByUsername(username))
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        // Composite UserDetailsService
         return new CompositeUserDetailsService(
                 List.of(inMemoryUserDetailsManager, databaseUserDetailsService)
         );
