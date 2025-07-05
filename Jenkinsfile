@@ -1,13 +1,19 @@
 pipeline {
     agent any
 
+    tools {
+        sonarScanner 'SonarScanner'
+    }
+
     options {
         buildDiscarder(logRotator(daysToKeepStr: '10', numToKeepStr: '10'))
         timeout(time: 15, unit: 'MINUTES')
+        timestamps()
     }
 
     environment {
-        SONAR_SERVER = 'sonar-server'
+        SONARQUBE_ENV = 'sonar-server'
+        FRONTEND_DIR = 'frontend'
     }
 
     stages {
@@ -15,32 +21,40 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 cleanWs()
-                echo '✅ Workspace cleaned before build.'
+                echo '✅ Workspace cleaned.'
             }
         }
 
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                script {
-                    checkout scm
-                    echo '✅ Code checked out successfully.'
-                }
+                checkout scm
+                echo '✅ Code checkout completed.'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    withSonarQubeEnv(credentialsId: 'SONARQUBE_TOKEN') {
+                dir("${env.FRONTEND_DIR}") {
+                    withSonarQubeEnv("${env.SONARQUBE_ENV}") {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                            timeout(time: 10, unit: 'MINUTES') {
-                                dir('frontend') {
-                                    sonarScanner()
+                            script {
+                                def scannerHome = tool 'SonarScanner'
+                                if (isUnix()) {
+                                    sh "${scannerHome}/bin/sonar-scanner"
+                                } else {
+                                    bat "${scannerHome}\\bin\\sonar-scanner.bat"
                                 }
                             }
                         }
                     }
-                    echo '✅ SonarQube analysis completed!'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -52,10 +66,10 @@ pipeline {
             echo '🧹 Workspace cleaned after build.'
         }
         success {
-            echo '✅ Build completed successfully!'
+            echo '✅ Pipeline completed successfully.'
         }
         failure {
-            echo '❌ Build failed. Check logs for details.'
+            echo '❌ Pipeline failed. Check SonarQube and logs.'
         }
     }
 }
