@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ChangePasswordPage from '@/app/change-password/page'; // Adjust path if needed
-import { AuthContext } from '@/contexts/auth-context';
+import { AuthContext, AuthContextType } from '@/contexts/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 jest.mock('next/navigation', () => ({
@@ -42,12 +42,21 @@ describe('ChangePasswordPage', () => {
         (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
     });
 
-    const renderPage = () =>
-        render(
-            <AuthContext.Provider value={{ api: { post } } as any}>
+    const renderPage = () => {
+        const mockContext: AuthContextType = {
+            isAuthenticated: true,
+            user: null,
+            login: jest.fn(),
+            logout: jest.fn(),
+            api: { post } as any,
+            loading: false,
+        };
+        return render(
+            <AuthContext.Provider value={mockContext}>
                 <ChangePasswordPage />
             </AuthContext.Provider>
         );
+    }
 
     it('pre-fills email from search params', () => {
         mockSearchParams.get.mockReturnValue('test@example.com');
