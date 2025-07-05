@@ -16,7 +16,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // ✅ Redirect authenticated users trying to access login page
   if (pathname === '/login' && isAuthenticated) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }

@@ -1,7 +1,6 @@
 import { middleware } from '../middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
-// ✅ Mock NextResponse statically
 jest.mock('next/server', () => ({
   NextResponse: {
     redirect: jest.fn(),
