@@ -122,7 +122,7 @@ export default function ContactUsPage() {
         color: '#00445d', mb: 3, textAlign: 'center',
         maxWidth: 500, zIndex: 1
       }}>
-        We'd love to hear from you! Please fill out the form below, and we'll get back to you shortly.
+        We&apos;d love to hear from you! Please fill out the form below, and we&apos;ll get back to you shortly.
       </Typography>
 
       {/* Form */}
