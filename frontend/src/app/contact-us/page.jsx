@@ -18,6 +18,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import Link from 'next/link';
 import Copyright from '@/components/Copyright';
 import { keyframes } from '@emotion/react';
+import { emailPattern } from '@/utils/validation';
 
 export default function ContactUsPage() {
   const [form, setForm] = useState({
@@ -62,7 +63,7 @@ export default function ContactUsPage() {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
     if (name === 'email') {
-      const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+      const valid = emailPattern.test(value);
       setEmailError(!valid);
     }
   };
