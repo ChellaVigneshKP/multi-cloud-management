@@ -24,7 +24,6 @@ pipeline {
                 checkout scm
             }
         }
-
         stage('Install Dependencies') {
             steps {
                 dir(env.FRONTEND_DIR) {
@@ -60,9 +59,9 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             script {
                                 if (isUnix()) {
-                                    sh 'npx sonar-scanner'
+                                    sh 'sonar-scanner'
                                 } else {
-                                    bat 'npx sonar-scanner'
+                                    bat 'sonar-scanner'
                                 }
                             }
                         }
@@ -85,10 +84,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo '✅ Pipeline completed successfully.'
+            echo 'Pipeline completed successfully.'
         }
         failure {
-            echo '❌ Pipeline failed. Check SonarQube and logs.'
+            echo 'Pipeline failed. Check SonarQube and logs.'
         }
     }
 }
