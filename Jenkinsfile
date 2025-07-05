@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        sonarRunner 'SonarScanner'
-    }
-
     options {
         buildDiscarder(logRotator(daysToKeepStr: '10', numToKeepStr: '10'))
         timeout(time: 15, unit: 'MINUTES')
@@ -17,32 +13,28 @@ pipeline {
     }
 
     stages {
-
         stage('Clean Workspace') {
             steps {
                 cleanWs()
-                echo '✅ Workspace cleaned.'
             }
         }
 
         stage('Checkout') {
             steps {
                 checkout scm
-                echo '✅ Code checkout completed.'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                dir("${env.FRONTEND_DIR}") {
-                    withSonarQubeEnv("${env.SONARQUBE_ENV}") {
+                dir(env.FRONTEND_DIR) {
+                    withSonarQubeEnv(env.SONARQUBE_ENV) {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             script {
-                                def scannerHome = tool 'SonarScanner'
                                 if (isUnix()) {
-                                    sh "${scannerHome}/bin/sonar-scanner"
+                                    sh 'sonar-scanner'
                                 } else {
-                                    bat "${scannerHome}\\bin\\sonar-scanner.bat"
+                                    bat 'sonar-scanner'
                                 }
                             }
                         }
@@ -63,13 +55,12 @@ pipeline {
     post {
         always {
             cleanWs()
-            echo '🧹 Workspace cleaned after build.'
         }
         success {
-            echo '✅ Pipeline completed successfully.'
+            echo 'Pipeline completed successfully.'
         }
         failure {
-            echo '❌ Pipeline failed. Check SonarQube and logs.'
+            echo 'Pipeline failed. Check SonarQube and logs.'
         }
     }
 }
