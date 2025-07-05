@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import ChangePasswordPage from '@/app/change-password/page'; // Adjust path if needed
 import { AuthContext, AuthContextType } from '@/contexts/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { AxiosInstance } from 'axios';
 
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(),
@@ -48,7 +49,9 @@ describe('ChangePasswordPage', () => {
             user: null,
             login: jest.fn(),
             logout: jest.fn(),
-            api: { post } as any,
+            api: {
+                post: post as AxiosInstance['post'],
+            } as AxiosInstance,
             loading: false,
         };
         return render(
