@@ -1,6 +1,7 @@
 'use client';
+import React, { PropsWithChildren } from 'react';
 import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
-import { PropsWithChildren } from 'react';
+
 
 const theme = createTheme({
   palette: {

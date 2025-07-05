@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Box, Typography } from '@mui/material';
 import Lottie from 'lottie-react';
 import loadingAnimation from '@/assets/animations/Loading.json';

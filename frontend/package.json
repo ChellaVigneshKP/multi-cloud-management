@@ -31,6 +31,7 @@
     "react-resizable": "^3.0.5",
     "react-toastify": "^11.0.5",
     "recharts": "^3.0.0",
+    "util": "^0.12.5",
     "yup": "^1.6.1"
   },
   "devDependencies": {
