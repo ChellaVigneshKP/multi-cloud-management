@@ -31,7 +31,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    withSonarQubeEnv(SONAR_SERVER) {
+                    withSonarQubeEnv(credentialsId: 'SONARQUBE_TOKEN') {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             timeout(time: 10, unit: 'MINUTES') {
                                 dir('frontend') {
