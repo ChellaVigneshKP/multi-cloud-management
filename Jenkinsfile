@@ -25,6 +25,34 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                dir(env.FRONTEND_DIR) {
+                    script {
+                        if (isUnix()) {
+                            sh 'npm ci'
+                        } else {
+                            bat 'npm ci'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests with Coverage') {
+            steps {
+                dir(env.FRONTEND_DIR) {
+                    script {
+                        if (isUnix()) {
+                            sh 'npm run test'
+                        } else {
+                            bat 'npm run test'
+                        }
+                    }
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 dir(env.FRONTEND_DIR) {
@@ -32,9 +60,9 @@ pipeline {
                         catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                             script {
                                 if (isUnix()) {
-                                    sh 'sonar-scanner'
+                                    sh 'npx sonar-scanner'
                                 } else {
-                                    bat 'sonar-scanner'
+                                    bat 'npx sonar-scanner'
                                 }
                             }
                         }
@@ -57,10 +85,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Pipeline completed successfully.'
+            echo '✅ Pipeline completed successfully.'
         }
         failure {
-            echo 'Pipeline failed. Check SonarQube and logs.'
+            echo '❌ Pipeline failed. Check SonarQube and logs.'
         }
     }
 }
