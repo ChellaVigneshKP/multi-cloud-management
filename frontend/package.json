@@ -50,7 +50,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-toastify": "^4.0.2",
-    "babel-jest": "^29.7.0",
+    "babel-jest": "^30.0.4",
     "eslint": "^9",
     "eslint-config-next": "^15.3.5",
     "identity-obj-proxy": "^3.0.0",
