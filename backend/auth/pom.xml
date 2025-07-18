@@ -11,7 +11,7 @@
 	<groupId>com.multicloud</groupId>
 	<artifactId>auth</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>UserAuthenticate</name>
+	<name>auth-service</name>
 	<description>Authentication Service for Multi-Cloud Management</description>
 	<url/>
 	<licenses>
@@ -80,6 +80,11 @@
 			<artifactId>jjwt-api</artifactId>
 			<version>0.12.6</version>
 		</dependency>
+        <dependency>
+            <groupId>com.multicloud</groupId>
+            <artifactId>common-lib</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
