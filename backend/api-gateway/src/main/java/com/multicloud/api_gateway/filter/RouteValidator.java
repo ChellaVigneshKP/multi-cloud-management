@@ -24,7 +24,8 @@ public class RouteValidator {
             "/auth/swagger-ui/**",
             "/favicon.ico",
             "/auth/refresh-token",
-            "/auth/logout"
+            "/auth/logout",
+            "/csrf"
     );
     private RouteValidator() {
         // Prevent instantiation

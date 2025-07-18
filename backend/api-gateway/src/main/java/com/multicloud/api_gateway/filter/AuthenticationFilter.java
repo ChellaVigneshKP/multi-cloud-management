@@ -15,17 +15,24 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.lang.NonNull; // Import the NonNull annotation
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.stream.Stream;
 
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationFilter.class);
     private final JweUtil jweUtil;
+    private static final String UNKNOWN_IP = "Unknown";
+    private static final String NOT_APPLICABLE = "N/A";
+    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
+    private static final String X_REAL_IP = "X-Real-IP";
 
     public AuthenticationFilter(JweUtil jweUtil) {
         super(Config.class);
@@ -62,16 +69,12 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     ServerHttpRequest modifiedRequest = new ServerHttpRequestDecorator(request) {
                         @Override
                         public @NonNull HttpHeaders getHeaders() {
-                            HttpHeaders headers = new HttpHeaders();
-                            headers.putAll(super.getHeaders());
-                            headers.remove("X-User-Name");
-                            headers.remove("X-User-Email");
-                            headers.remove("X-User-Id");
-                            headers.add("X-User-Name", username);
-                            headers.add("X-User-Email", email);
-                            headers.add("X-User-Id", userId);
-                            headers.add("X-User-IP", ipAddressV4); // Add client IPv4
-                            headers.add("X-User-IP-V6", ipAddressV6); // Add client IPv6
+                            HttpHeaders headers = super.getHeaders();
+                            headers.set("X-User-Name", username);
+                            headers.set("X-User-Email", email);
+                            headers.set("X-User-Id", userId);
+                            headers.set("X-User-IP", ipAddressV4);
+                            headers.set("X-User-IP-V6", ipAddressV6);
                             return headers;
                         }
                     };
@@ -88,15 +91,13 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 String ipAddressV4 = clientIpAddresses[0];
                 String ipAddressV6 = clientIpAddresses[1];
                 logger.info("Request to unsecured path from IPv4: {}, IPv6: {} to Path: {}", ipAddressV4, ipAddressV6, requestPath);
-
                 // Create a modified request with additional headers
                 ServerHttpRequest modifiedRequest = new ServerHttpRequestDecorator(request) {
                     @Override
                     public @NonNull HttpHeaders getHeaders() {
-                        HttpHeaders headers = new HttpHeaders();
-                        headers.putAll(super.getHeaders());
-                        headers.add("X-User-IP", ipAddressV4);  // Add client IPv4
-                        headers.add("X-User-IP-V6", ipAddressV6);  // Add client IPv6
+                        HttpHeaders headers = super.getHeaders();
+                        headers.set("X-User-IP", ipAddressV4);
+                        headers.set("X-User-IP-V6", ipAddressV6);
                         return headers;
                     }
                 };
@@ -106,45 +107,43 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     }
 
     private String[] extractClientIpAddresses(ServerHttpRequest request) {
-        String ipAddressV4 = "Unknown";
-        String ipAddressV6 = "Unknown";
+        String ipAddressV4 = UNKNOWN_IP;
+        String ipAddressV6 = UNKNOWN_IP;
 
-        // Try to get the IP from X-Forwarded-For header
-        String xForwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // X-Forwarded-For can contain multiple IP addresses in case of proxy chaining
-            String[] ipAddresses = xForwardedFor.split(",");
-            String clientIp = ipAddresses[0].trim();
+        // Get all potential IP sources
+        String ipToCheck = Stream.of(
+                        request.getHeaders().getFirst(X_FORWARDED_FOR),
+                        request.getHeaders().getFirst(X_REAL_IP),
+                        request.getRemoteAddress() != null ?
+                                request.getRemoteAddress().getAddress().getHostAddress() : null
+                )
+                .filter(ip -> ip != null && !ip.isEmpty())
+                .findFirst()
+                .map(ip -> ip.split(",")[0].trim())
+                .orElse(null);
+
+        // Parse the IP if found
+        if (ipToCheck != null) {
             try {
-                InetAddress inetAddress = InetAddress.getByName(clientIp);
-                if (inetAddress instanceof java.net.Inet4Address) {
+                InetAddress inetAddress = InetAddress.getByName(ipToCheck);
+                if (inetAddress instanceof Inet4Address) {
                     ipAddressV4 = inetAddress.getHostAddress();
-                } else if (inetAddress instanceof java.net.Inet6Address) {
-                    ipAddressV6 = inetAddress.getHostAddress();
-                    // Check for IPv4-mapped IPv6 address
-                    if (ipAddressV6.startsWith("::ffff:")) {
-                        ipAddressV4 = ipAddressV6.substring(7);
-                    }
+                    ipAddressV6 = NOT_APPLICABLE;
                 }
-            } catch (Exception e) {
-                logger.error("Error parsing IP address from X-Forwarded-For: {}", e.getMessage());
+                else if (inetAddress instanceof Inet6Address) {
+                    ipAddressV6 = inetAddress.getHostAddress();
+                    ipAddressV4 = ipAddressV6.startsWith("::ffff:") ?
+                            ipAddressV6.substring(7) : NOT_APPLICABLE;
+                }
             }
-        } else {
-            // Fallback to remote address
-            InetSocketAddress remoteAddress = request.getRemoteAddress();
-            if (remoteAddress != null) {
-                InetAddress inetAddress = remoteAddress.getAddress();
-                if (inetAddress instanceof java.net.Inet4Address) {
-                    ipAddressV4 = inetAddress.getHostAddress();
-                } else if (inetAddress instanceof java.net.Inet6Address) {
-                    ipAddressV6 = inetAddress.getHostAddress();
-                    // Check for IPv4-mapped IPv6 address
-                    if (ipAddressV6.startsWith("::ffff:")) {
-                        ipAddressV4 = ipAddressV6.substring(7);
-                    }
-                }
+            catch (UnknownHostException e) {
+                logger.debug("Invalid IP address format '{}'", ipToCheck);
+            }
+            catch (Exception e) {
+                logger.error("Unexpected error parsing IP '{}'", ipToCheck, e);
             }
         }
+
         return new String[]{ipAddressV4, ipAddressV6};
     }
 
@@ -163,7 +162,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
         // Constructor
         public Config(boolean enableLogging, String customHeader) {
             this.enableLogging = enableLogging;
-            this.customHeader = customHeader;
+            this.customHeader = customHeader != null ? customHeader : "";
         }
 
         // Getters and setters

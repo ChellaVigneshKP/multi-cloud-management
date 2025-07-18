@@ -23,7 +23,8 @@ import java.util.Date;
 
 @Component
 public class JweUtil {
-
+    private static final String PEM_PRIVATE_KEY_HEADER = "-----BEGIN PRIVATE KEY-----";
+    private static final String PEM_PRIVATE_KEY_FOOTER = "-----END PRIVATE KEY-----";
     @Value("${security.jwt.private-key-path}")
     private String privateKeyPath;
     private final ResourceLoader resourceLoader;
@@ -60,16 +61,17 @@ public class JweUtil {
     private RSAPrivateKey loadPrivateKey() {
         try {
             Resource resource = resourceLoader.getResource(privateKeyPath);
-            InputStream is = resource.getInputStream();
-            String privateKeyContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            privateKeyContent = privateKeyContent
-                    .replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s+", "");
-            byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
-            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory kf = KeyFactory.getInstance("RSA");
-            return (RSAPrivateKey) kf.generatePrivate(spec);
+            try (InputStream is = resource.getInputStream()) {
+                String privateKeyContent = new String(is.readAllBytes(), StandardCharsets.UTF_8)
+                        .replace(PEM_PRIVATE_KEY_HEADER, "")
+                        .replace(PEM_PRIVATE_KEY_FOOTER, "")
+                        .replaceAll("\\s+", "");
+
+                byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
+                PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+                KeyFactory kf = KeyFactory.getInstance("RSA");
+                return (RSAPrivateKey) kf.generatePrivate(spec);
+            }
         } catch (Exception e) {
             throw new PrivateKeyLoadingException("Error loading private key", e);
         }

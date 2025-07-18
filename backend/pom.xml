@@ -12,7 +12,6 @@
 
     <!-- Modules -->
     <modules>
-        <module>admin-server</module>
         <module>api-gateway</module>
         <module>auth</module>
         <module>config-server</module>
