@@ -4,7 +4,7 @@ import com.multicloud.auth.dto.ForgotPasswordRequest;
 import com.multicloud.auth.dto.ResetPasswordRequest;
 import com.multicloud.auth.dto.SuccessResponse;
 import com.multicloud.auth.repository.RefreshTokenRepository;
-import com.multicloud.auth.responses.ErrorResponse;
+import com.multicloud.auth.dto.responses.ErrorResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;

@@ -1,6 +1,6 @@
 package com.multicloud.auth.controller;
 
-import com.multicloud.auth.responses.ErrorResponse;
+import com.multicloud.auth.dto.responses.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

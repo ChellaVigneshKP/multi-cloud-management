@@ -2,12 +2,12 @@ package com.multicloud.auth.controller;
 
 import com.fasterxml.jackson.annotation.JsonView;
 import com.multicloud.auth.dto.LoginUserDto;
-import com.multicloud.auth.model.RefreshToken;
-import com.multicloud.auth.model.User;
+import com.multicloud.auth.entity.RefreshToken;
+import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
-import com.multicloud.auth.responses.ErrorResponse;
-import com.multicloud.auth.responses.LoginResponse;
-import com.multicloud.auth.responses.TokenResponse;
+import com.multicloud.auth.dto.responses.ErrorResponse;
+import com.multicloud.auth.dto.responses.LoginResponse;
+import com.multicloud.auth.dto.responses.TokenResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;

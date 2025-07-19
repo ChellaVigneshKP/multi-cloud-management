@@ -1,7 +1,7 @@
 package com.multicloud.auth.service;
 
 import com.multicloud.auth.component.EmailNotificationProducer;
-import com.multicloud.auth.model.User;
+import com.multicloud.auth.entity.User;
 import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.email.EmailNotification;
 import com.multicloud.commonlib.email.LoginAlertEmailRequest;

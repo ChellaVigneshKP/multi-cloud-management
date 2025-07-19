@@ -1,4 +1,4 @@
-package com.multicloud.auth.model;
+package com.multicloud.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

@@ -1,7 +1,7 @@
 package com.multicloud.auth.repository;
 
 
-import com.multicloud.auth.model.User;
+import com.multicloud.auth.entity.User;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

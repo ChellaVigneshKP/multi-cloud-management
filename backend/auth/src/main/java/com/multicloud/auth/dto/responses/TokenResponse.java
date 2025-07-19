@@ -1,4 +1,4 @@
-package com.multicloud.auth.responses;
+package com.multicloud.auth.dto.responses;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.multicloud.auth.view.Views;
 

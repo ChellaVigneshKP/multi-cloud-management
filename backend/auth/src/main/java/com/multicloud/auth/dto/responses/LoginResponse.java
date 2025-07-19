@@ -1,4 +1,4 @@
-package com.multicloud.auth.responses;
+package com.multicloud.auth.dto.responses;
 
 import lombok.Getter;
 import lombok.Setter;

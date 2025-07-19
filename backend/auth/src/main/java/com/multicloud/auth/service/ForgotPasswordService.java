@@ -1,6 +1,6 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.model.User;
+import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.UserRepository;
 import com.multicloud.commonlib.exceptions.InvalidPasswordResetTokenException;
 import org.slf4j.Logger;

@@ -1,6 +1,6 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.model.User;
+import com.multicloud.auth.entity.User;
 import com.multicloud.commonlib.exceptions.JweDecryptionException;
 import com.multicloud.commonlib.exceptions.JweEncryptionException;
 import com.multicloud.commonlib.exceptions.PrivateKeyLoadingException;
