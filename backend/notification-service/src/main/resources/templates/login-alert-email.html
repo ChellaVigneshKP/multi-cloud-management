@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>New Login Alert</title>
+    <style>
+        /* Importing Comfortaa for the brand name and Open Sans for the body */
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa&family=Open+Sans&display=swap');
+
+        body {
+            font-family: 'Open Sans', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e4edf3;
+            margin: 0;
+            padding: 20px;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+        }
+        .email-header {
+            padding: 20px;
+            text-align: center;
+            background-color: #00445d;
+            color: #ffffff;
+        }
+        .email-header img {
+            height: 40px;
+            vertical-align: middle;
+        }
+        .email-header .brand-name {
+            font-family: 'Comfortaa', cursive;
+            font-size: 24px;
+            margin-left: 10px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+        .email-header .slogan {
+            font-size: 14px;
+            color: #88b5c4;
+            margin-top: 5px;
+        }
+        .email-title {
+            padding: 15px;
+            text-align: center;
+            color: #333333;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .email-subtitle {
+            padding: 0 20px 10px;
+            text-align: center;
+            color: #555555;
+            font-size: 14px;
+        }
+        .device-image {
+            text-align: center;
+            padding: 10px;
+        }
+        .device-image img {
+            height: 50px;
+        }
+        .device-info {
+            padding: 10px 20px;
+            text-align: center;
+            color: #333333;
+            font-size: 14px;
+        }
+        .login-time, .map-section {
+            padding: 10px 20px;
+            text-align: center;
+            color: #333333;
+            font-size: 14px;
+        }
+        .divider {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .divider hr {
+            border: none;
+            border-top: 1px solid #dddddd;
+            width: 80%;
+        }
+        .email-body {
+            padding: 15px 30px;
+            color: #333333;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .email-body a {
+            color: #00445d;
+            text-decoration: underline;
+        }
+        .map-section img {
+            border-radius: 8px;
+            max-width: 75%;
+            height: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .action-button {
+            text-align: center;
+            padding: 15px;
+        }
+        .action-button a {
+            background-color: #00445d;
+            color: #ffffff;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        .action-button a:hover {
+            background-color: #003244;
+        }
+        .email-footer {
+            background-color: #f2f4f7;
+            padding: 10px 20px;
+            color: #777777;
+            font-size: 12px;
+            text-align: center;
+        }
+        .email-footer a {
+            color: #00445d;
+            text-decoration: underline;
+        }
+        .app-name {
+            font-family: 'Comfortaa', cursive;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+
+    <!-- Header -->
+    <div class="email-header">
+        <img th:src="${logo}" alt="C-Cloud Logo">
+        <div class="slogan">Centralize Your Clouds. Streamline Your Management.</div>
+    </div>
+
+    <!-- Title -->
+    <div class="email-title">
+        New Login Detected, <span th:text="${username}">Username</span>
+    </div>
+
+    <!-- Subtitle -->
+    <div class="email-subtitle">
+        A login was detected from a device you don't usually use.
+    </div>
+
+    <!-- Device Image Section (Centered Image) -->
+    <div class="device-image">
+        <img th:src="${deviceImagePath}" alt="Device Icon">
+    </div>
+
+    <!-- Device Info Section -->
+    <div class="device-info">
+        <span th:text="${os}">OS</span> &middot; <span th:text="${browser}">Browser</span> &middot;
+        <span th:text="${location}">City, Region</span> &middot; <span th:text="${country}">Country</span>
+    </div>
+
+    <!-- Login Time -->
+    <div class="login-time">
+        <span th:text="${formattedLoginTime}">Login Time</span>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider">
+        <hr>
+    </div>
+
+    <!-- Body Content -->
+    <div class="email-body">
+        <p>We detected a login from <strong th:text="${os}">OS Device</strong> on <strong th:text="${browser}">Browser</strong> with IP address: <strong th:text="${clientIp}">IP Address</strong>.</p>
+        <p>If this was you, feel free to ignore this message. If not, please <a th:href="${changePasswordUrl}">change your password</a> immediately.</p>
+    </div>
+
+    <!-- Map Section -->
+    <div class="map-section">
+        <img th:src="${mapUrl}" alt="Login Location Map">
+    </div>
+
+    <!-- Action Button -->
+    <div class="action-button">
+        <a th:href="${changePasswordUrl}">Change Your Password</a>
+    </div>
+
+    <!-- Footer -->
+    <div class="email-footer">
+        <p>If you have any questions, <a href="mailto:info@chellavignesh.com">contact us</a>.</p>
+        <p>&copy; 2024 <span>chellavignesh.com</span>. All rights reserved.</p>
+    </div>
+
+</div>
+</body>
+</html>

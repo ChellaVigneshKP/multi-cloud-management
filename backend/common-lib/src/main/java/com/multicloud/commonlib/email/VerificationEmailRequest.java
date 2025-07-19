@@ -19,5 +19,8 @@ public class VerificationEmailRequest extends EmailRequest {
      * Default constructor for VerificationEmailRequest.
      * Initializes the email type to VERIFICATION.
      */
-    public VerificationEmailRequest() {}
+    public VerificationEmailRequest() {
+        super();
+        this.setType(EmailType.VERIFICATION);
+    }
 }

@@ -1,8 +1,11 @@
 package com.multicloud.auth.service;
 
+import com.multicloud.auth.component.EmailNotificationProducer;
 import com.multicloud.auth.dto.LoginAlertDto;
 import com.multicloud.auth.exception.EmailSendingException;
 import com.multicloud.auth.model.User;
+import com.multicloud.commonlib.email.EmailNotification;
+import com.multicloud.commonlib.email.PasswordResetEmailRequest;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,24 +23,40 @@ public class AsyncEmailService {
     private final EmailService emailService;
     private final IpGeolocationService ipGeolocationService;
     private final String googleMapsApiKey;
+    private final EmailNotificationProducer emailNotificationProducer;
     private static final Logger logger = LoggerFactory.getLogger(AsyncEmailService.class);
     @Value("${email.desktop.image.url}")
     private String desktopImagePath;
     @Value("${email.mobile.image.url}")
     private String mobileImagePath;
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
+    @Value("${email.logo.url}")
+    private String logoUrl;
     public AsyncEmailService(EmailService emailService, IpGeolocationService ipGeolocationService,
-                             @Value("${google.maps.api.key}") String googleMapsApiKey) {
+                             @Value("${google.maps.api.key}") String googleMapsApiKey, EmailNotificationProducer emailNotificationProducer) {
         this.emailService = emailService;
         this.ipGeolocationService = ipGeolocationService;
         this.googleMapsApiKey = googleMapsApiKey;
+        this.emailNotificationProducer = emailNotificationProducer;
     }
 
     @Async("taskExecutor")
     public void sendPasswordResetEmailAsync(User user) {
         try {
-            emailService.sendPasswordResetEmail(user);  // This can throw MessagingException
+            PasswordResetEmailRequest request = new PasswordResetEmailRequest();
+            request.setTo(user.getEmail());
+            request.setSubject("Password Reset Request for C-Cloud Account");
+            request.setFirstName(user.getFirstName());
+            request.setResetLink(frontendBaseUrl+"/reset-password?token=" + user.getPasswordResetToken());
+            request.setLogoUrl(logoUrl);
+            EmailNotification notification = new EmailNotification();
+            notification.setEmailRequest(request);
+            notification.setTemplateName("password-reset-email");
+            emailNotificationProducer.sendEmailNotification(notification);
+//            emailService.sendPasswordResetEmail(user);  // This can throw MessagingException
             logger.info("Password reset email sent to: {}", user.getEmail());
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             throw new EmailSendingException("Failed to send password reset email to " + user.getEmail(), e);
         }
     }

@@ -27,5 +27,8 @@ public class LoginAlertEmailRequest extends EmailRequest {
      * Default constructor for LoginAlertEmailRequest.
      * Initializes the email type to LOGIN_ALERT.
      */
-    public LoginAlertEmailRequest() {}
+    public LoginAlertEmailRequest() {
+        super();
+        this.setType(EmailType.LOGIN_ALERT);
+    }
 }

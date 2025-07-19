@@ -1,0 +1,17 @@
+spring:
+  cloud:
+    stream:
+      bindings:
+        authEmailNotification-in-0:
+          destination: auth-email-notifications
+          group: notification-service
+          content-type: application/json
+      rabbit:
+        bindings:
+          authEmailNotification-in-0:
+            consumer:
+              binding-routing-key: auth.email.notification
+              declare-exchange: true
+              exchange-type: direct
+              auto-bind-dlq: true
+              republish-to-dlq: true

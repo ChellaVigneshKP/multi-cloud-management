@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Account Verification</title>
+  <style>
+    /* Importing Comfortaa for the brand name and Open Sans for the body */
+    @import url('https://fonts.googleapis.com/css2?family=Comfortaa&family=Open+Sans&display=swap');
+
+    body {
+      font-family: 'Open Sans', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e4edf3;
+      margin: 0;
+      padding: 20px;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: auto;
+      background-color: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    }
+    .email-header {
+      padding: 20px;
+      text-align: center;
+      background-color: #00445d;
+      color: #ffffff;
+    }
+    .email-header img {
+      height: 40px;
+      vertical-align: middle;
+    }
+    .email-header .slogan {
+      font-size: 14px;
+      color: #88b5c4;
+      margin-top: 5px;
+    }
+    .email-title {
+      padding: 15px;
+      text-align: center;
+      color: #333333;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .email-subtitle {
+      padding: 0 20px 10px;
+      text-align: center;
+      color: #555555;
+      font-size: 14px;
+    }
+    .email-body {
+      padding: 15px 30px;
+      color: #333333;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .verification-code-container {
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .verification-code-container h3 {
+      color: #333333;
+      font-size: 16px;
+      margin: 0;
+    }
+    .verification-code {
+      font-size: 24px;
+      font-weight: bold;
+      color: #00445d; /* Updated to match theme color */
+      margin: 10px 0;
+    }
+    .email-footer {
+      background-color: #f2f4f7;
+      padding: 10px 20px;
+      color: #777777;
+      font-size: 12px;
+      text-align: center;
+    }
+    .email-footer a {
+      color: #00445d;
+      text-decoration: underline;
+    }
+    .app-name {
+      font-family: 'Comfortaa', cursive;
+    }
+  </style>
+</head>
+<body>
+<div class="email-container">
+
+  <!-- Header -->
+  <div class="email-header">
+    <img th:src="${logo}" alt="C-Cloud Logo">
+    <div class="slogan">Centralize Your Clouds. Streamline Your Management.</div>
+  </div>
+
+  <!-- Title -->
+  <div class="email-title">
+    Account Verification
+  </div>
+
+  <!-- Subtitle -->
+  <div class="email-subtitle">
+    Please enter the verification code below to complete your registration.
+  </div>
+
+  <!-- Body Content -->
+  <div class="email-body">
+    <p>Dear <span th:text="${firstName}">User</span>,</p>
+    <p>To continue with your registration or account setup, please enter the following verification code:</p>
+
+    <!-- Verification Code -->
+    <div class="verification-code-container">
+      <h3>Your Verification Code:</h3>
+      <p class="verification-code" th:text="${verificationCode}">VERIFICATION CODE</p>
+    </div>
+
+    <p>If you did not request this code, please disregard this email.</p>
+    <p>Best regards,<br><strong>C-Cloud Team</strong></p>
+  </div>
+
+  <!-- Footer -->
+  <div class="email-footer">
+    <p>If you have any questions, <a href="mailto:info@chellavignesh.com">contact us</a>.</p>
+    <p>&copy; 2024 <span>chellavignesh.com</span>. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

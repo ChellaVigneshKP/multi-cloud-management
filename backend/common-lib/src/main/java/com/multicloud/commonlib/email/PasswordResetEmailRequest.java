@@ -19,5 +19,8 @@ public class PasswordResetEmailRequest extends EmailRequest {
      * Default constructor for PasswordResetEmailRequest.
      * Initializes the email type to PASSWORD_RESET.
      */
-    public PasswordResetEmailRequest() {}
+    public PasswordResetEmailRequest() {
+        super();
+        this.setType(EmailType.PASSWORD_RESET);
+    }
 }
