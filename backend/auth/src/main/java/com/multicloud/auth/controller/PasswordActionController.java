@@ -28,10 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequestMapping("/auth")
 @RestController
-@Tag(name = "Password", description = "Endpoints for forgot-password, reset-password and take-action")
-public class PasswordController {
+@Tag(name = "PasswordAction", description = "Endpoints for forgot-password, reset-password and take-action")
+public class PasswordActionController {
 
-    private static final Logger logger = LoggerFactory.getLogger(PasswordController.class);
+    private static final Logger logger = LoggerFactory.getLogger(PasswordActionController.class);
     private final JweService jweService;
     private final AuthenticationService authenticationService;  // Service for authentication-related tasks
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
@@ -39,11 +39,11 @@ public class PasswordController {
     private final HttpServletRequest request;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    public PasswordController(JweService jweService,
-                                  AuthenticationService authenticationService,
-                                  ForgotPasswordService forgotPasswordService,
-                                  HttpServletRequest request,
-                                  RefreshTokenRepository refreshTokenRepository) {
+    public PasswordActionController(JweService jweService,
+                                    AuthenticationService authenticationService,
+                                    ForgotPasswordService forgotPasswordService,
+                                    HttpServletRequest request,
+                                    RefreshTokenRepository refreshTokenRepository) {
         this.jweService = jweService;
         this.authenticationService = authenticationService;
         this.forgotPasswordService = forgotPasswordService;

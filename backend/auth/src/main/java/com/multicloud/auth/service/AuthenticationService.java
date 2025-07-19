@@ -210,9 +210,9 @@ public class AuthenticationService {
         String subject = "Account Verification Required for C-Cloud";  // Email subject
         try {
             asyncEmailNotificationService.produceVerificationNotification(user.getEmail(), subject, user);  // Send the email
-            logger.info("Email sent successfully to mail id '{}'", user.getEmail());
+            logger.info("Email Notification sent successfully to mail id '{}'", user.getEmail());
         } catch (EmailNotificationPublishException e) {
-            logger.error("Failed to send verification email to {}", user.getEmail(), e);
+            logger.error("Failed to send verification email to queue {}", user.getEmail(), e);
         }
     }
 
