@@ -2,13 +2,13 @@ package com.multicloud.auth.controller;
 
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
-import com.multicloud.auth.exception.EmailAlreadyRegisteredException;
-import com.multicloud.auth.exception.UsernameAlreadyExistsException;
 import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.responses.ErrorResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.ForgotPasswordService;
 import com.multicloud.auth.service.JweService;
+import com.multicloud.commonlib.exceptions.EmailAlreadyRegisteredException;
+import com.multicloud.commonlib.exceptions.UsernameAlreadyExistsException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

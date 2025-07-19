@@ -1,10 +1,10 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.exception.JweDecryptionException;
-import com.multicloud.auth.exception.JweEncryptionException;
-import com.multicloud.auth.exception.PrivateKeyLoadingException;
-import com.multicloud.auth.exception.PublicKeyLoadingException;
 import com.multicloud.auth.model.User;
+import com.multicloud.commonlib.exceptions.JweDecryptionException;
+import com.multicloud.commonlib.exceptions.JweEncryptionException;
+import com.multicloud.commonlib.exceptions.PrivateKeyLoadingException;
+import com.multicloud.commonlib.exceptions.PublicKeyLoadingException;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.*;
 import com.nimbusds.jwt.*;

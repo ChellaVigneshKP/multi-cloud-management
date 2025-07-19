@@ -1,7 +1,7 @@
 package com.multicloud.auth.config;
 
-import com.multicloud.auth.exception.JweDecryptionException;
 import com.multicloud.auth.service.JweService;
+import com.multicloud.commonlib.exceptions.JweDecryptionException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;

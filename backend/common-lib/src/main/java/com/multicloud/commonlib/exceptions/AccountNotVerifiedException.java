@@ -1,4 +1,4 @@
-package com.multicloud.auth.exception;
+package com.multicloud.commonlib.exceptions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

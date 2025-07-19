@@ -1,8 +1,8 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.exception.InvalidPasswordResetTokenException;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.UserRepository;
+import com.multicloud.commonlib.exceptions.InvalidPasswordResetTokenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,14 +18,14 @@ public class ForgotPasswordService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AsyncEmailService asyncEmailService;
+    private final AsyncEmailNotificationService asyncEmailNotificationService;
 
     private static final Logger logger = LoggerFactory.getLogger(ForgotPasswordService.class);
 
-    public ForgotPasswordService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailService asyncEmailService) {
+    public ForgotPasswordService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailNotificationService asyncEmailNotificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.asyncEmailService = asyncEmailService;
+        this.asyncEmailNotificationService = asyncEmailNotificationService;
     }
     private String generateToken() {
         SecureRandom secureRandom = new SecureRandom();
@@ -51,7 +51,7 @@ public class ForgotPasswordService {
         user.setPasswordResetExpiresAt(LocalDateTime.now().plusHours(1)); // Token valid for 1 hour
         userRepository.save(user);
         // Send the email asynchronously
-        asyncEmailService.sendPasswordResetEmailAsync(user);
+        asyncEmailNotificationService.producePasswordResetNotification(user);
     }
 
     // **Handle Reset Password Request**

@@ -1,12 +1,13 @@
 package com.multicloud.auth.service;
 
 import com.multicloud.auth.component.EmailNotificationProducer;
-import com.multicloud.auth.dto.LoginAlertDto;
-import com.multicloud.auth.exception.EmailSendingException;
 import com.multicloud.auth.model.User;
+import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.email.EmailNotification;
+import com.multicloud.commonlib.email.LoginAlertEmailRequest;
 import com.multicloud.commonlib.email.PasswordResetEmailRequest;
-import jakarta.mail.MessagingException;
+import com.multicloud.commonlib.email.VerificationEmailRequest;
+import com.multicloud.commonlib.exceptions.EmailNotificationPublishException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,13 +19,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class AsyncEmailService {
+public class AsyncEmailNotificationService {
 
-    private final EmailService emailService;
     private final IpGeolocationService ipGeolocationService;
     private final String googleMapsApiKey;
     private final EmailNotificationProducer emailNotificationProducer;
-    private static final Logger logger = LoggerFactory.getLogger(AsyncEmailService.class);
+    private static final Logger logger = LoggerFactory.getLogger(AsyncEmailNotificationService.class);
     @Value("${email.desktop.image.url}")
     private String desktopImagePath;
     @Value("${email.mobile.image.url}")
@@ -33,16 +33,15 @@ public class AsyncEmailService {
     private String frontendBaseUrl;
     @Value("${email.logo.url}")
     private String logoUrl;
-    public AsyncEmailService(EmailService emailService, IpGeolocationService ipGeolocationService,
-                             @Value("${google.maps.api.key}") String googleMapsApiKey, EmailNotificationProducer emailNotificationProducer) {
-        this.emailService = emailService;
+    public AsyncEmailNotificationService(IpGeolocationService ipGeolocationService,
+                                         @Value("${google.maps.api.key}") String googleMapsApiKey, EmailNotificationProducer emailNotificationProducer) {
         this.ipGeolocationService = ipGeolocationService;
         this.googleMapsApiKey = googleMapsApiKey;
         this.emailNotificationProducer = emailNotificationProducer;
     }
 
     @Async("taskExecutor")
-    public void sendPasswordResetEmailAsync(User user) {
+    public void producePasswordResetNotification(User user) {
         try {
             PasswordResetEmailRequest request = new PasswordResetEmailRequest();
             request.setTo(user.getEmail());
@@ -54,15 +53,14 @@ public class AsyncEmailService {
             notification.setEmailRequest(request);
             notification.setTemplateName("password-reset-email");
             emailNotificationProducer.sendEmailNotification(notification);
-//            emailService.sendPasswordResetEmail(user);  // This can throw MessagingException
             logger.info("Password reset email sent to: {}", user.getEmail());
         } catch (Exception e) {
-            throw new EmailSendingException("Failed to send password reset email to " + user.getEmail(), e);
+            throw new EmailNotificationPublishException("Failed to send password reset email to " + user.getEmail(), e);
         }
     }
 
     @Async("taskExecutor")
-    public void sendIpChangeAlertEmailAsync(User user, String clientIp, String userAgent) {
+    public void produceLoginAlertNotification(User user, String clientIp, String userAgent) {
         String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
         String city = locationDetails[0];
@@ -79,39 +77,38 @@ public class AsyncEmailService {
         String browser = od[0];
         String os = od[1];
         String device = od[2];
-        String deviceImagePath = device.equalsIgnoreCase("Mobile") ? mobileImagePath : desktopImagePath;
-        LoginAlertDto loginAlertDto = LoginAlertDto.builder()
-                .user(user)
-                .clientIp(clientIp)
-                .userAgent(userAgent)
-                .city(city)
-                .region(region)
-                .country(country)
-                .lastLogin(loginTime)
-                .mapUrl(mapUrl)
-                .formattedLoginTime(formattedLoginTime)
-                .deviceImagePath(deviceImagePath)
-                .os(os)
-                .browser(browser)
-                .build();
-        logger.info("User {} logged in from new IP Address: {} from City {}, Region {}, Country {}, Location {} and Device {}, OS {}, Browser {} at {}",
-                loginAlertDto.getUser().getUsername(),
-                loginAlertDto.getClientIp(),
-                city,
-                region,
-                country,
-                loc,
-                device,
-                os,
-                browser,
-                formattedLoginTime
-        );
-        String subject = "New Login on C-Cloud from "+browser+" on "+os;
-        try {
-            emailService.sendIpChangeAlertEmail(loginAlertDto.getUser().getEmail(), subject, loginAlertDto);  // Pass loginAlertDto instead of htmlMessage
-            logger.info("Login alert email sent successfully to '{}'", loginAlertDto.getUser().getEmail());
-        } catch (MessagingException e) {
-            logger.error("Failed to send new IP alert email to user: {}", loginAlertDto.getUser().getEmail(), e);
-        }
+        LoginAlertEmailRequest request = new LoginAlertEmailRequest();
+        request.setTo(user.getEmail());
+        request.setSubject("New Login on C-Cloud from "+browser+" on "+os);
+        request.setLogoUrl(logoUrl);
+        request.setUsername(user.getUsername());
+        request.setOs(os);
+        request.setBrowser(browser);
+        request.setLocation(city + ", " + region);
+        request.setClientIp(clientIp);
+        request.setCountry(country);
+        request.setFormattedLoginTime(formattedLoginTime);
+        request.setMapUrl(mapUrl);
+        request.setChangePasswordUrl(frontendBaseUrl + "/change-password?email=" + user.getEmail());
+        request.setDeviceImagePath(device.equalsIgnoreCase("Mobile") ? mobileImagePath : desktopImagePath);
+        EmailNotification notification = new EmailNotification();
+        notification.setEmailRequest(request);
+        notification.setTemplateName("login-alert-email");
+        emailNotificationProducer.sendEmailNotification(notification);
     }
+
+    @Async("taskExecutor")
+    public void produceVerificationNotification(String to, String subject, User user){
+        VerificationEmailRequest request = new VerificationEmailRequest();
+        request.setTo(to);
+        request.setSubject(subject);
+        request.setFirstName(user.getFirstName());
+        request.setVerificationCode(user.getVerificationCode());
+        request.setLogoUrl(logoUrl);
+        EmailNotification notification = new EmailNotification();
+        notification.setEmailRequest(request);
+        notification.setTemplateName("verification-email");
+        emailNotificationProducer.sendEmailNotification(notification);
+    }
+
 }

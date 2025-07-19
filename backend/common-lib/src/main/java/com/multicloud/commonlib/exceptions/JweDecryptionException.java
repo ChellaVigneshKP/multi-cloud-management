@@ -1,4 +1,4 @@
-package com.multicloud.auth.exception;
+package com.multicloud.commonlib.exceptions;
 
 public class JweDecryptionException extends RuntimeException {
     public JweDecryptionException(String message, Throwable cause) {

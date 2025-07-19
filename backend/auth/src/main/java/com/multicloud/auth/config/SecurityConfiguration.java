@@ -4,19 +4,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -24,21 +20,17 @@ import java.util.List;
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final AuthenticationProvider authenticationProvider;
 
-    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter,
-                                 AuthenticationProvider authenticationProvider) {
+    public SecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.authenticationProvider = authenticationProvider;
     }
 
     @Value("${spring.security.user.roles}")
     private String roles;
 
-    // Define the AuthenticationManager bean
     @Bean
-    public AuthenticationManager authenticationManager() {
-        return new ProviderManager(List.of(authenticationProvider));
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean
@@ -61,12 +53,7 @@ public class SecurityConfiguration {
                 )
                 // Use Basic Auth for /actuator/**
                 .httpBasic(Customizer.withDefaults())
-                // Add the custom authentication provider
-                .authenticationProvider(authenticationProvider);
-
-        // Add JWT filter before UsernamePasswordAuthenticationFilter
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -1,8 +1,6 @@
 package com.multicloud.auth.component;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multicloud.commonlib.email.EmailNotification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +23,7 @@ public class EmailNotificationProducer {
         this.outputBinding = outputBinding;
     }
 
-    public void sendEmailNotification(EmailNotification notification) throws JsonProcessingException {
-        logger.info("Sending as JSON: {}", new ObjectMapper().writeValueAsString(notification));
+    public void sendEmailNotification(EmailNotification notification) {
         boolean sent = streamBridge.send(outputBinding, notification);
         logger.info("Message sent to {}: {}", outputBinding, sent);
     }

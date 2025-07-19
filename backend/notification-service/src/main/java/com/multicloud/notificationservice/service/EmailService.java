@@ -65,12 +65,12 @@ public class EmailService {
     }
 
     private String getLogoUrl(EmailRequest request) {
-        if (request instanceof VerificationEmailRequest) {
-            return ((VerificationEmailRequest) request).getLogoUrl();
-        } else if (request instanceof PasswordResetEmailRequest) {
-            return ((PasswordResetEmailRequest) request).getLogoUrl();
-        } else if (request instanceof LoginAlertEmailRequest) {
-            return ((LoginAlertEmailRequest) request).getLogoUrl();
+        if (request instanceof VerificationEmailRequest verificationEmailRequest) {
+            return verificationEmailRequest.getLogoUrl();
+        } else if (request instanceof PasswordResetEmailRequest passwordResetEmailRequest) {
+            return passwordResetEmailRequest.getLogoUrl();
+        } else if (request instanceof LoginAlertEmailRequest loginAlertEmailRequest) {
+            return loginAlertEmailRequest.getLogoUrl();
         }
         return "";
     }

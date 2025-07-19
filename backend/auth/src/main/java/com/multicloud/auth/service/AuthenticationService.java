@@ -3,13 +3,13 @@ package com.multicloud.auth.service;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
-import com.multicloud.auth.exception.*;
 import com.multicloud.auth.model.RefreshToken;
 import com.multicloud.auth.model.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.repository.UserRepository;
 import com.multicloud.auth.responses.TokenResponse;
-import jakarta.mail.MessagingException;
+import com.multicloud.auth.util.UserAgentParser;
+import com.multicloud.commonlib.exceptions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,30 +29,27 @@ public class AuthenticationService {
     private final UserRepository userRepository;  // Repository for user data
     private final PasswordEncoder passwordEncoder;  // Encoder for passwords
     private final AuthenticationManager authenticationManager;  // Manager for authentication
-    private final EmailService emailService;  // Service for sending emails
     private final KafkaTemplate<String, Map<String, String>> kafkaTemplate;  // Kafka template for message production
     @Value("${spring.kafka.topic.user-registration}")
     private String userRegistrationTopic;  // Kafka topic for user registration
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
-    private final AsyncEmailService asyncEmailService;
+    private final AsyncEmailNotificationService asyncEmailNotificationService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JweService jweService;
     public AuthenticationService(
             UserRepository userRepository,
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
-            EmailService emailService,
             KafkaTemplate<String, Map<String, String>> kafkaTemplate,
-            AsyncEmailService asyncEmailService,
+            AsyncEmailNotificationService asyncEmailNotificationService,
             RefreshTokenRepository refreshTokenRepository,
             JweService jweService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
         this.kafkaTemplate = kafkaTemplate;
-        this.asyncEmailService = asyncEmailService;
+        this.asyncEmailNotificationService = asyncEmailNotificationService;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jweService = jweService;
     }
@@ -118,7 +115,7 @@ public class AuthenticationService {
             if (isNewVisitorIdWithNewIp) {
                 // Trigger email only if both visitor ID and IP are new
                 logger.info("New Device or IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
-                asyncEmailService.sendIpChangeAlertEmailAsync(user, clientIp, userAgent);
+                asyncEmailNotificationService.produceLoginAlertNotification(user, clientIp, userAgent);
             }
         }
         user.setLastLogin(LocalDateTime.now());
@@ -212,11 +209,10 @@ public class AuthenticationService {
     private void sendVerificationEmail(User user) {
         String subject = "Account Verification Required for C-Cloud";  // Email subject
         try {
-            emailService.sendVerificationEmail(user.getEmail(), subject, user);  // Send the email
+            asyncEmailNotificationService.produceVerificationNotification(user.getEmail(), subject, user);  // Send the email
             logger.info("Email sent successfully to mail id '{}'", user.getEmail());
-        } catch (MessagingException e) {
-            // Handle email sending exception
-            logger.error("Failed to send verification email", e);
+        } catch (EmailNotificationPublishException e) {
+            logger.error("Failed to send verification email to {}", user.getEmail(), e);
         }
     }
 

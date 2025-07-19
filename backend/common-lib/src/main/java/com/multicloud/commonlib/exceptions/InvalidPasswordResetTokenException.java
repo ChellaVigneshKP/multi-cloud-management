@@ -1,4 +1,4 @@
-package com.multicloud.auth.exception;
+package com.multicloud.commonlib.exceptions;
 
 public class InvalidPasswordResetTokenException extends RuntimeException {
     public InvalidPasswordResetTokenException(String message) {

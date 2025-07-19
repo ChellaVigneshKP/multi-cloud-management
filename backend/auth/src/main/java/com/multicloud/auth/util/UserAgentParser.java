@@ -1,4 +1,4 @@
-package com.multicloud.auth.service;
+package com.multicloud.auth.util;
 
 import eu.bitwalker.useragentutils.Browser;
 import eu.bitwalker.useragentutils.DeviceType;

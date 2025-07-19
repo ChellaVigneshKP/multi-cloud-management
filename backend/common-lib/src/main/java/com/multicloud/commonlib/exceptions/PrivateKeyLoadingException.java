@@ -1,7 +1,7 @@
-package com.multicloud.auth.exception;
+package com.multicloud.commonlib.exceptions;
 
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PrivateKeyLoadingException extends Exception {
     private static final Logger logger = LoggerFactory.getLogger(PrivateKeyLoadingException.class);
