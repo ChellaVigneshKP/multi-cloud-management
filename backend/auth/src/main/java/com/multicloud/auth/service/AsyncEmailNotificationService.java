@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -60,7 +61,7 @@ public class AsyncEmailNotificationService {
     }
 
     @Async("taskExecutor")
-    public void produceLoginAlertNotification(User user, String clientIp, String userAgent) {
+    public void produceLoginAlertNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin) {
         String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
         String city = locationDetails[0];
@@ -71,7 +72,7 @@ public class AsyncEmailNotificationService {
                 + "&zoom=13&size=600x300&maptype=roadmap"
                 + "&markers=color:red%7C" + loc
                 + "&key=" + googleMapsApiKey;
-        ZonedDateTime loginTime = ZonedDateTime.of(user.getLastLogin(), ZoneId.systemDefault());
+        ZonedDateTime loginTime = ZonedDateTime.of(lastLogin, ZoneId.systemDefault());
         String formattedLoginTime = loginTime.format(DateTimeFormatter.ofPattern("MMMM dd 'at' hh:mm a z"));
         String[] od = UserAgentParser.parseUserAgent(userAgent);
         String browser = od[0];

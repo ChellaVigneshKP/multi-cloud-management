@@ -23,7 +23,7 @@ public class TokenCleanupService {
     @Transactional
     public void cleanOldRefreshTokens() {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
-        int deletedCount = refreshTokenRepository.deleteByExpiryDateBefore(cutoffDate);
+        int deletedCount = refreshTokenRepository.deleteExpiredTokens(cutoffDate);
         logger.info("Deleted {} old, expired refresh tokens", deletedCount);
     }
 }
