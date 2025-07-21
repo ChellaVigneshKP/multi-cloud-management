@@ -79,7 +79,7 @@ public class LoginService {
             String clientIp = getClientIp(request);
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
             try {
-                User user = authenticateUser(loginRequest);
+                User user = authenticateUser(loginRequest, now);
                 if (user != null) {
                     log.info("User login successful - userId: {}, IP: {}", user.getId(), clientIp);
                     recordLoginAttempt(user, loginRequest.getEmail(), true, clientIp, userAgent, null);
@@ -107,6 +107,7 @@ public class LoginService {
                 return ResponseEntity.status(401).body(new LoginResponse(INVALID_CREDENTIALS));
             } catch (UsernameNotFoundException e) {
                 log.warn("Authentication failed for user [email_hash={}] as user doesn't exist", DigestUtils.sha256Hex(loginRequest.getEmail()));
+                recordLoginAttempt(null, loginRequest.getEmail(), false, clientIp, userAgent, INVALID_CREDENTIALS);
                 return ResponseEntity.status(401).body(new LoginResponse(INVALID_CREDENTIALS));
             }
         } catch (Exception e) {
@@ -132,17 +133,19 @@ public class LoginService {
         }
     }
 
-    protected User authenticateUser(LoginUserDto loginRequest) {
+    protected User authenticateUser(LoginUserDto loginRequest, LocalDateTime now) {
         User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        checkAccountStatus(user);
-        verifyCredentials(loginRequest, user);
+        boolean updated = checkAccountStatus(user, now);
+        updated |= verifyCredentials(loginRequest, user, now);
+        if (updated) {
+            userRepository.save(user);
+        }
         return user;
     }
 
-    private void checkAccountStatus(User user) {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+    private boolean checkAccountStatus(User user, LocalDateTime now) {
+        boolean updated = false;
         if (!user.isEnabled()) {
             throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
         }
@@ -152,15 +155,16 @@ public class LoginService {
             }
             user.setLocked(false);
             user.setFailedAttempts(0);
-            userRepository.save(user);
+            updated = true;
         }
+        return updated;
     }
 
-    public boolean hasExceededSessionLimit(User user, int maxSessions) {
-        return refreshTokenRepository.countActiveTokensByUser(user, LocalDateTime.now()) >= maxSessions;
+    public boolean hasExceededSessionLimit(User user, int maxSessions , LocalDateTime now) {
+        return refreshTokenRepository.countActiveTokensByUser(user, now) >= maxSessions;
     }
 
-    private void verifyCredentials(LoginUserDto loginRequest, User user) {
+    private boolean verifyCredentials(LoginUserDto loginRequest, User user, LocalDateTime now) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -170,26 +174,27 @@ public class LoginService {
             // Reset failed attempts on successful login
             if (user.getFailedAttempts() > 0) {
                 user.setFailedAttempts(0);
-                userRepository.save(user);
+                return true;
             }
         } catch (AuthenticationException e) {
-            handleFailedLogin(user);
+            handleFailedLogin(user , now);
             throw e;
         }
+        return false;
     }
 
-    private void handleFailedLogin(User user) {
+    private void handleFailedLogin(User user, LocalDateTime now) {
         userRepository.incrementFailedAttemptsAndLockIfNeeded(
                 user.getId(),
                 MAX_LOGIN_ATTEMPTS,
-                LocalDateTime.now(ZoneOffset.UTC).plus(LOCKOUT_DURATION)
+                now.plus(LOCKOUT_DURATION)
         );
     }
 
 
     private RefreshToken handleRefreshToken(User user, LoginUserDto loginRequest,
                                             String userAgent, String clientIp, LocalDateTime now, HttpServletRequest request) {
-        if (hasExceededSessionLimit(user, maxSessions)) {
+        if (hasExceededSessionLimit(user, maxSessions, now)) {
             throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
         }
         String tokenValue = UUID.randomUUID().toString();
