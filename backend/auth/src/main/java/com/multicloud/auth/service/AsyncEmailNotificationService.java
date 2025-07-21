@@ -8,6 +8,7 @@ import com.multicloud.commonlib.email.LoginAlertEmailRequest;
 import com.multicloud.commonlib.email.PasswordResetEmailRequest;
 import com.multicloud.commonlib.email.VerificationEmailRequest;
 import com.multicloud.commonlib.exceptions.EmailNotificationPublishException;
+import com.multicloud.commonlib.util.common.MapUrlUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @Service
 public class AsyncEmailNotificationService {
@@ -61,18 +64,16 @@ public class AsyncEmailNotificationService {
     }
 
     @Async("taskExecutor")
-    public void produceLoginAlertNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin) {
+    public void produceLoginAlertNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin, String timezoneId) {
         String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
         String city = locationDetails[0];
         String region = locationDetails[1];
         String country = locationDetails[2];
         String loc = locationDetails[3]; // Latitude, Longitude
-        String mapUrl = "https://maps.googleapis.com/maps/api/staticmap?center=" + loc
-                + "&zoom=13&size=600x300&maptype=roadmap"
-                + "&markers=color:red%7C" + loc
-                + "&key=" + googleMapsApiKey;
-        ZonedDateTime loginTime = ZonedDateTime.of(lastLogin, ZoneId.systemDefault());
+        String mapUrl = MapUrlUtil.generateMapUrl(loc, googleMapsApiKey);
+        ZoneId zone = ZoneId.of(Optional.ofNullable(timezoneId).orElse("UTC"));
+        ZonedDateTime loginTime = lastLogin.atZone(ZoneOffset.UTC).withZoneSameInstant(zone);
         String formattedLoginTime = loginTime.format(DateTimeFormatter.ofPattern("MMMM dd 'at' hh:mm a z"));
         String[] od = UserAgentParser.parseUserAgent(userAgent);
         String browser = od[0];

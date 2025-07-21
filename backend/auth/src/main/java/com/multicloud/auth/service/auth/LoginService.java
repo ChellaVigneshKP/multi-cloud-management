@@ -193,6 +193,7 @@ public class LoginService {
             throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
         }
         String tokenValue = UUID.randomUUID().toString();
+        String timezoneId = request.getHeader("X-Timezone");
         LocalDateTime expiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
         String deviceInfo = buildDeviceInfo(userAgent, request);
 
@@ -202,11 +203,11 @@ public class LoginService {
                         // Revoke the old token before creating a new one
                         existing.revoke(clientIp);
                         refreshTokenRepository.save(existing);
-                        return createNewRefreshToken(user, tokenValue, expiry, deviceInfo, clientIp, loginRequest.getVisitorId(), now);
+                        return createNewRefreshToken(user, tokenValue, expiry, deviceInfo, clientIp, loginRequest.getVisitorId(), now, timezoneId);
                     }
                     return updateExistingToken(existing, tokenValue, expiry, clientIp);
                 })
-                .orElseGet(() -> createNewRefreshToken(user, tokenValue, expiry, deviceInfo, clientIp, loginRequest.getVisitorId(), now));
+                .orElseGet(() -> createNewRefreshToken(user, tokenValue, expiry, deviceInfo, clientIp, loginRequest.getVisitorId(), now, timezoneId));
     }
 
     private RefreshToken updateExistingToken(RefreshToken token, String newValue,
@@ -217,7 +218,7 @@ public class LoginService {
     }
 
     private RefreshToken createNewRefreshToken(User user, String tokenValue, LocalDateTime expiry,
-                                               String deviceInfo, String ip, String visitorId , LocalDateTime now) {
+                                               String deviceInfo, String ip, String visitorId , LocalDateTime now, String timezoneId) {
         // Check separately for visitorId and IP
         boolean isNewDevice = !refreshTokenRepository.existsByUserAndVisitorId(user, visitorId)
                 && !refreshTokenRepository.existsByUserAndIpAddress(user, ip);
@@ -227,7 +228,7 @@ public class LoginService {
 
         if (isNewDevice) {
             log.info("New device login detected - userId: {}, IP: {}", user.getId(), ip);
-            asyncEmailNotificationService.produceLoginAlertNotification(user, ip, deviceInfo,now);
+            asyncEmailNotificationService.produceLoginAlertNotification(user, ip, deviceInfo,now, timezoneId);
         }
 
         return saved;
