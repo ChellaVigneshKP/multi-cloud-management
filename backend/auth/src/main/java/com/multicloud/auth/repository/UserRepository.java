@@ -58,4 +58,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("userId") Long userId,
             @Param("maxAttempts") int maxAttempts,
             @Param("lockoutEnd") LocalDateTime lockoutEnd);
+
+    @Modifying
+    @Query("UPDATE User u SET " +
+            "u.failedAttempts = :newAttempts, " +
+            "u.locked = :locked, " +
+            "u.lockoutEnd = :lockoutEnd " +
+            "WHERE u.id = :userId")
+    void updateFailedAttemptsAndLockStatus(
+            @Param("userId") Long userId,
+            @Param("newAttempts") int newAttempts,
+            @Param("locked") boolean locked,
+            @Param("lockoutEnd") LocalDateTime lockoutEnd);
 }

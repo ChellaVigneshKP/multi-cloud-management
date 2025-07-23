@@ -2,6 +2,7 @@ package com.multicloud.auth.controller;
 
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.responses.ErrorResponse;
+import com.multicloud.auth.dto.responses.GeneralApiResponse;
 import com.multicloud.auth.dto.responses.LoginResponse;
 import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.auth.LoginService;
@@ -53,7 +54,7 @@ public class LoginController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
+    public ResponseEntity<GeneralApiResponse<LoginResponse>> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
         return loginService.handleLogin(loginUserDto, userAgent, request);
     }
 

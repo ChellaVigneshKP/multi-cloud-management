@@ -22,4 +22,6 @@ public class AuthConstants {
      * The name of Invalid IP Address.
      */
     public static final String NOT_APPLICABLE = "N/A";
+
+    public static final String INVALID_CREDENTIALS = "Invalid credentials";
 }

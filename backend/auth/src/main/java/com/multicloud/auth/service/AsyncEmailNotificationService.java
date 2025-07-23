@@ -64,7 +64,7 @@ public class AsyncEmailNotificationService {
     }
 
     @Async("taskExecutor")
-    public void produceLoginAlertNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin, String timezoneId) {
+    public void produceLoginAlertNotification(User user, String clientIp, String userAgent, String loginTime) {
         String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
         String city = locationDetails[0];
@@ -72,9 +72,6 @@ public class AsyncEmailNotificationService {
         String country = locationDetails[2];
         String loc = locationDetails[3]; // Latitude, Longitude
         String mapUrl = MapUrlUtil.generateMapUrl(loc, googleMapsApiKey);
-        ZoneId zone = ZoneId.of(Optional.ofNullable(timezoneId).orElse("UTC"));
-        ZonedDateTime loginTime = lastLogin.atZone(ZoneOffset.UTC).withZoneSameInstant(zone);
-        String formattedLoginTime = loginTime.format(DateTimeFormatter.ofPattern("MMMM dd 'at' hh:mm a z"));
         String[] od = UserAgentParser.parseUserAgent(userAgent);
         String browser = od[0];
         String os = od[1];
@@ -89,7 +86,7 @@ public class AsyncEmailNotificationService {
         request.setLocation(city + ", " + region);
         request.setClientIp(clientIp);
         request.setCountry(country);
-        request.setFormattedLoginTime(formattedLoginTime);
+        request.setFormattedLoginTime(loginTime);
         request.setMapUrl(mapUrl);
         request.setChangePasswordUrl(frontendBaseUrl + "/change-password?email=" + user.getEmail());
         request.setDeviceImagePath(device.equalsIgnoreCase("Mobile") ? mobileImagePath : desktopImagePath);
@@ -111,6 +108,18 @@ public class AsyncEmailNotificationService {
         notification.setEmailRequest(request);
         notification.setTemplateName("verification-email");
         emailNotificationProducer.sendEmailNotification(notification);
+    }
+
+    @Async
+    public void produceAccountLockNotification(String email, String clientIp){
+        // This method is intentionally left blank for future implementation
+        logger.info("Account lock notification for email: {} from IP: {}", email, clientIp);
+    }
+
+    @Async
+    public void produceLoginFromNewDeviceNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin, String timezoneId) {
+        // This method is intentionally left blank for future implementation
+        logger.info("User {} logged in from a new device at {}", user.getUsername(), lastLogin);
     }
 
 }

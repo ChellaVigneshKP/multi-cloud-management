@@ -38,6 +38,9 @@ public class LoginAttempt {
     @Column(length = 255)
     private String failureReason;
 
+    @Column(name = "visitor_id", length = 64)
+    private String visitorId;
+
     @Version
     private Long version;
 
@@ -46,7 +49,7 @@ public class LoginAttempt {
         this.attemptTime = LocalDateTime.now();
     }
 
-    public LoginAttempt(User user, String email, boolean successful, String ipAddress, String userAgent, String failureReason) {
+    public LoginAttempt(User user, String email, boolean successful, String ipAddress, String userAgent, String failureReason,  String  visitorId) {
         this();
         this.user = user;
         this.email = email;
@@ -54,5 +57,6 @@ public class LoginAttempt {
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
         this.failureReason = failureReason;
+        this.visitorId = visitorId;
     }
 }
