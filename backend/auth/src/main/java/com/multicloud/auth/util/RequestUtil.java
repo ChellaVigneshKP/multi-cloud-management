@@ -1,6 +1,7 @@
 package com.multicloud.auth.util;
 
 import com.multicloud.commonlib.constants.AuthConstants;
+import com.multicloud.commonlib.constants.DeviceConstants;
 import jakarta.servlet.http.HttpServletRequest;
 
 public class RequestUtil {
@@ -20,9 +21,9 @@ public class RequestUtil {
         String clientIpv4 = request.getHeader("X-User-IP");
         String clientIpv6 = request.getHeader("X-User-IP-V6");
         String clientIp = "UNKNOWN";
-        if (!AuthConstants.NOT_APPLICABLE.equals(clientIpv4)) {
+        if (!DeviceConstants.NOT_APPLICABLE.equals(clientIpv4)) {
             clientIp = clientIpv4;  // Prefer IPv4 if it's available and not "Unknown"
-        } else if (!AuthConstants.NOT_APPLICABLE.equals(clientIpv6)) {
+        } else if (!DeviceConstants.NOT_APPLICABLE.equals(clientIpv6)) {
             clientIp = clientIpv6;  // Fallback to IPv6 if IPv4 is "Unknown"
         }
         return clientIp;

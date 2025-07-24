@@ -19,11 +19,6 @@ public class AuthConstants {
     public static final String JWE_TOKEN_COOKIE_NAME = "jweToken";
 
     /**
-     * The name of Invalid IP Address.
-     */
-    public static final String NOT_APPLICABLE = "N/A";
-
-    /**
      * The name of the response to indicate the credentials is invalid.
      */
     public static final String INVALID_CREDENTIALS = "Invalid credentials";

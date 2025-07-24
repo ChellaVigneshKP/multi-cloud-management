@@ -16,6 +16,7 @@ public class Constants {
         // Private constructor to prevent instantiation
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
+
     /**
      * List of open API endpoints that do not require authentication.
      * These endpoints are accessible without any security checks.
@@ -36,5 +37,27 @@ public class Constants {
             "/auth/refresh-token",
             "/auth/logout",
             "/csrf"
+    );
+
+    /**
+     * List of HTTP headers that may contain the client's IP address.
+     * These headers are commonly used in reverse proxy setups to forward the original client IP.
+     */
+    public static final List<String> IP_HEADER_CANDIDATES = List.of(
+            "X-Forwarded-For",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP",
+            "HTTP_X_FORWARDED_FOR",
+            "HTTP_X_FORWARDED",
+            "HTTP_X_CLUSTER_CLIENT_IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_FORWARDED_FOR",
+            "HTTP_FORWARDED",
+            "HTTP_VIA",
+            "X-Real-IP",
+            "X-Client-IP",
+            "CF-Connecting-IP",
+            "Forwarded",
+            "Forwarded-For"
     );
 }

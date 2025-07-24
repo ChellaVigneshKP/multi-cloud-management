@@ -110,7 +110,7 @@ public class DeviceConstants {
     /**
      * Header for Unknown IP
      */
-    public static final String UNKNOWN_IP = "Unknown";
+    public static final String UNKNOWN_IP = "UNKNOWN";
     /**
      * Header for Real Ip
      */
@@ -131,6 +131,15 @@ public class DeviceConstants {
      * Header for User Id
      */
     public static final String X_USER_ID = "X-User-Id";
+    /**
+     * The name of NA IP Address.
+     */
+    public static final String NOT_APPLICABLE = "N/A";
+    /**
+     * The name of Invalid IP Address.
+     */
+    public static final String INVALID_IP = "INVALID_IP";
+
 
 
 }
