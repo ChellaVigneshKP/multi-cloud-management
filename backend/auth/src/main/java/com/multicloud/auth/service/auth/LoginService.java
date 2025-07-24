@@ -15,7 +15,9 @@ import com.multicloud.auth.util.CookieUtil;
 import com.multicloud.auth.util.RequestUtil;
 import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.constants.AuthConstants;
+import com.multicloud.commonlib.constants.DeviceConstants;
 import com.multicloud.commonlib.exceptions.*;
+import com.multicloud.commonlib.util.common.InputSanitizer;
 import com.multicloud.commonlib.util.common.LoginTimeUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
@@ -44,7 +46,6 @@ import java.util.UUID;
 public class LoginService {
 
     private static final Logger log = LoggerFactory.getLogger(LoginService.class);
-    private static final String UNKNOWN_DEVICE = "unknown:unknown:unknown";
     private static final String INVALID_CREDENTIALS = "Invalid credentials";
 
     private final AuthenticationManager authenticationManager;
@@ -71,9 +72,6 @@ public class LoginService {
 
     @Value("${auth.failure.global-max-attempts:2}")
     private int globalMaxAttempts;
-
-    @Value("${refresh.token.rotate-hours-before-expiry:1}")
-    private int rotateHoursBeforeExpiry;
 
     @Value("${auth.failure.lockout-window-hours:1}")
     private int lockoutWindowHours;
@@ -109,7 +107,7 @@ public class LoginService {
             long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
                     loginRequest.getEmail(), loginRequest.getVisitorId(), lockWindowStart);
             if (failedAttemptsFromDevice >= maxDeviceAttempts) {
-                log.warn("Too many failed attempts from device for email: {}", loginRequest.getEmail());
+                log.warn("Too many failed attempts from device for email: {}", InputSanitizer.sanitize(loginRequest.getEmail()));
                 throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
             }
             long uniqueVisitorIdFailures = loginAttemptRepository.countDistinctFailedVisitorIds(loginRequest.getEmail(), lockWindowStart);
@@ -126,16 +124,13 @@ public class LoginService {
         Optional<User> cachedUserOpt = getUserByEmail(loginRequest.getEmail());
         try {
             User user = authenticateUser(loginRequest, now, clientIp, failedAttemptsFromDevice, uniqueVisitorIdFailures, cachedUserOpt);
-            if (user == null) {
-                throw new CCloudAuthException("User not found for email: " + DigestUtils.sha256Hex(loginRequest.getEmail()));
-            }
             log.info("User login successful - userId: {}, IP: {}", user.getId(), clientIp);
             recordLoginAttempt(user, loginRequest.getEmail(), true, clientIp, userAgent, null, loginRequest.getVisitorId());
             RefreshToken refreshToken = handleRefreshToken(user, loginRequest, userAgent, clientIp, now, request);
             updateUserLoginInfo(user, clientIp, now);
             boolean isSecure = RequestUtil.isRequestSecure(request);
             if (user.getFailedAttempts() >= maxDeviceAttempts && uniqueVisitorIdFailures >= globalMaxAttempts) {
-                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(user, clientIp, userAgent, now, request.getHeader("X-Timezone"));
+                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(user, clientIp, userAgent, now, InputSanitizer.sanitize(request.getHeader(DeviceConstants.HEADER_TIMEZONE)));
             }
             return buildSuccessResponse(user, refreshToken, loginRequest.isRemember(), isSecure);
         } catch (Exception e) {
@@ -236,34 +231,39 @@ public class LoginService {
 
     private RefreshToken handleRefreshToken(User user, LoginUserDto loginRequest,
                                             String userAgent, String clientIp, LocalDateTime now, HttpServletRequest request) {
+
         if (hasExceededSessionLimit(user, maxSessions, now)) {
             throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
         }
         String tokenValue = UUID.randomUUID().toString();
-        String timezoneId = request.getHeader("X-Timezone");
-        LocalDateTime expiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
+        String timezoneId = request.getHeader(DeviceConstants.HEADER_TIMEZONE);
+        LocalDateTime newExpiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
         String deviceInfo = UserAgentParser.buildDeviceInfo(userAgent, request);
         String loginTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
+
         return refreshTokenRepository.lockByUserAndVisitorId(user, loginRequest.getVisitorId())
                 .map(existing -> {
-                    if (existing.isExpired() || existing.isRevoked() ||
-                            existing.getExpiryDate().isBefore(now.plusHours(rotateHoursBeforeExpiry))) {
+                    if (shouldRotateToken(existing, now)) {
                         existing.revoke(clientIp);
                         refreshTokenRepository.save(existing);
-                        return createNewRefreshToken(user, tokenValue, expiry, deviceInfo,
+                        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo,
                                 clientIp, loginRequest.getVisitorId(), loginTime);
                     }
-                    return updateExistingToken(existing, tokenValue, expiry, clientIp);
+
+                    log.info("Reusing existing token ID {} for userId {}", existing.getId(), user.getId());
+                    return existing;
                 })
-                .orElseGet(() -> createNewRefreshToken(user, tokenValue, expiry, deviceInfo,
+                .orElseGet(() -> createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo,
                         clientIp, loginRequest.getVisitorId(), loginTime));
     }
 
-    private RefreshToken updateExistingToken(RefreshToken token, String newValue,
-                                             LocalDateTime expiry, String ip) {
-        log.info("Reusing existing token ID {} for userId {}, rotating value", token.getId(), token.getUser().getId());
-        token.updateToken(newValue, expiry, ip);
-        return refreshTokenRepository.save(token);
+    private boolean shouldRotateToken(RefreshToken existing, LocalDateTime now) {
+        if (existing.isExpired() || existing.isRevoked()) return true;
+
+        // Rotate if it will expire soon
+        Duration remaining = Duration.between(now, existing.getExpiryDate());
+        Duration total = Duration.between(existing.getCreatedAt(), existing.getExpiryDate());
+        return remaining.toMinutes() < (total.toMinutes() * 0.1); // less than 10% lifetime left
     }
 
     private RefreshToken createNewRefreshToken(User user, String tokenValue, LocalDateTime expiry,
@@ -300,12 +300,13 @@ public class LoginService {
                 AuthConstants.JWE_TOKEN_COOKIE_NAME, jwe,
                 Duration.ofMillis(jweService.getExpirationTime()), true, isSecure, cookieSameSite);
 
+        String userId = user.getId() != null ? InputSanitizer.sanitize(user.getId().toString()) : null;
+        String  userName  = InputSanitizer.sanitize(user.getUsername());
+        String lastLogin = user.getLastLogin() != null ? InputSanitizer.sanitize(user.getLastLogin().toString()) : null;
         return ResponseEntity.ok()
-                .headers(headers -> {
-                    headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-                    headers.add(HttpHeaders.SET_COOKIE, jweCookie.toString());
-                })
-                .body(GeneralApiResponse.success("Login successful", new LoginResponse("Login successful")));
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, jweCookie.toString())
+                .body(GeneralApiResponse.success("Login successful", new LoginResponse(userId, userName, lastLogin)));
     }
 
     @Transactional(readOnly = true)

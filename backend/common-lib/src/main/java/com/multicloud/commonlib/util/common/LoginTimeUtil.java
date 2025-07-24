@@ -4,6 +4,10 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
+/**
+ * Utility class for formatting login times in a user-friendly way.
+ * It converts UTC login times to the user's timezone and formats them for display.
+ */
 public class LoginTimeUtil {
 
     /**
@@ -14,6 +18,10 @@ public class LoginTimeUtil {
         // Private constructor to prevent instantiation
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
+    /**
+     * DateTimeFormatter for formatting login time.
+     * Example format: "July 23 at 06:15 PM IST"
+     */
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("MMMM dd 'at' hh:mm a z");
 

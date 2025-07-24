@@ -8,6 +8,7 @@ import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.auth.LoginService;
 import com.multicloud.auth.service.auth.LogoutService;
 import com.multicloud.commonlib.constants.AuthConstants;
+import com.multicloud.commonlib.util.common.InputSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -55,7 +56,12 @@ public class LoginController {
     })
     @PostMapping("/login")
     public ResponseEntity<GeneralApiResponse<LoginResponse>> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
-        return loginService.handleLogin(loginUserDto, userAgent, request);
+        LoginUserDto sanitizedDto = new LoginUserDto();
+        sanitizedDto.setEmail(InputSanitizer.sanitize(loginUserDto.getEmail()));
+        sanitizedDto.setPassword(InputSanitizer.sanitize(loginUserDto.getPassword()));
+        sanitizedDto.setVisitorId(InputSanitizer.sanitize(loginUserDto.getVisitorId()));
+        sanitizedDto.setRemember(loginUserDto.isRemember());
+        return loginService.handleLogin(sanitizedDto, userAgent, request);
     }
 
 
