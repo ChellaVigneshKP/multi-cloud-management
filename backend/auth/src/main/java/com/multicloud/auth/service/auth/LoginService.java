@@ -232,6 +232,16 @@ public class LoginService {
     private RefreshToken handleRefreshToken(User user, LoginUserDto loginRequest,
                                             String userAgent, String clientIp, LocalDateTime now, HttpServletRequest request) {
 
+        Optional<RefreshToken> existingOpt = refreshTokenRepository.lockByUserAndVisitorId(user, loginRequest.getVisitorId());
+        if (existingOpt.isPresent()) {
+            RefreshToken existing = existingOpt.get();
+            if (!shouldRotateToken(existing, now)) {
+                log.info("Reusing existing token ID {} for userId {}", existing.getId(), user.getId());
+                return existing;
+            }
+            existing.revoke(clientIp);
+            refreshTokenRepository.save(existing);
+        }
         if (hasExceededSessionLimit(user, maxSessions, now)) {
             throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
         }
@@ -240,21 +250,7 @@ public class LoginService {
         LocalDateTime newExpiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
         String deviceInfo = UserAgentParser.buildDeviceInfo(userAgent, request);
         String loginTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
-
-        return refreshTokenRepository.lockByUserAndVisitorId(user, loginRequest.getVisitorId())
-                .map(existing -> {
-                    if (shouldRotateToken(existing, now)) {
-                        existing.revoke(clientIp);
-                        refreshTokenRepository.save(existing);
-                        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo,
-                                clientIp, loginRequest.getVisitorId(), loginTime);
-                    }
-
-                    log.info("Reusing existing token ID {} for userId {}", existing.getId(), user.getId());
-                    return existing;
-                })
-                .orElseGet(() -> createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo,
-                        clientIp, loginRequest.getVisitorId(), loginTime));
+        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo, clientIp, loginRequest.getVisitorId(), loginTime);
     }
 
     private boolean shouldRotateToken(RefreshToken existing, LocalDateTime now) {
@@ -301,7 +297,7 @@ public class LoginService {
                 Duration.ofMillis(jweService.getExpirationTime()), true, isSecure, cookieSameSite);
 
         String userId = user.getId() != null ? InputSanitizer.sanitize(user.getId().toString()) : null;
-        String  userName  = InputSanitizer.sanitize(user.getUsername());
+        String userName = InputSanitizer.sanitize(user.getUsername());
         String lastLogin = user.getLastLogin() != null ? InputSanitizer.sanitize(user.getLastLogin().toString()) : null;
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
