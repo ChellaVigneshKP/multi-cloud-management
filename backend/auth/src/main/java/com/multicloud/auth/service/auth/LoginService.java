@@ -7,18 +7,18 @@ import com.multicloud.auth.entity.LoginAttempt;
 import com.multicloud.auth.entity.RefreshToken;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.LoginAttemptRepository;
-import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.repository.UserRepository;
 import com.multicloud.auth.service.AsyncEmailNotificationService;
 import com.multicloud.auth.service.JweService;
 import com.multicloud.auth.util.CookieUtil;
 import com.multicloud.auth.util.RequestUtil;
-import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.constants.AuthConstants;
 import com.multicloud.commonlib.constants.DeviceConstants;
-import com.multicloud.commonlib.exceptions.*;
+import com.multicloud.commonlib.exceptions.AccountLockedException;
+import com.multicloud.commonlib.exceptions.AccountNotVerifiedException;
+import com.multicloud.commonlib.exceptions.TooManyDeviceAttemptsException;
+import com.multicloud.commonlib.exceptions.UsernameNotFoundException;
 import com.multicloud.commonlib.util.common.InputSanitizer;
-import com.multicloud.commonlib.util.common.LoginTimeUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
@@ -37,9 +37,7 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class LoginService {
@@ -49,19 +47,16 @@ public class LoginService {
 
     private final AuthenticationManager authenticationManager;
     private final JweService jweService;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
     private final LoginAttemptRepository loginAttemptRepository;
     private final AsyncEmailNotificationService asyncEmailNotificationService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${auth.token.expiry.remember-days:30}")
     private int rememberExpiryDays;
 
     @Value("${auth.token.expiry.normal-days:7}")
     private int normalExpiryDays;
-
-    @Value("${auth.token.max-sessions:5}")
-    private int maxSessions;
 
     @Value("${auth.failure.max-attempts:10}")
     private int maxAuthAttempts;
@@ -84,16 +79,16 @@ public class LoginService {
     public LoginService(
             AuthenticationManager authenticationManager,
             JweService jweService,
-            RefreshTokenRepository refreshTokenRepository,
             UserRepository userRepository,
             LoginAttemptRepository loginAttemptRepository,
-            AsyncEmailNotificationService asyncEmailNotificationService) {
+            AsyncEmailNotificationService asyncEmailNotificationService,
+            RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.jweService = jweService;
-        this.refreshTokenRepository = refreshTokenRepository;
         this.userRepository = userRepository;
         this.loginAttemptRepository = loginAttemptRepository;
         this.asyncEmailNotificationService = asyncEmailNotificationService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -118,7 +113,7 @@ public class LoginService {
             User user = authenticateUser(loginRequest, now, clientIp, failedAttemptsFromDevice, uniqueVisitorIdFailures, cachedUserOpt);
             log.info("User login successful - userId: {}, IP: {}", user.getId(), clientIp);
             recordLoginAttempt(user, loginRequest.getEmail(), true, clientIp, userAgent, null, loginRequest.getVisitorId());
-            RefreshToken refreshToken = handleRefreshToken(user, loginRequest, userAgent, clientIp, now, request);
+            RefreshToken refreshToken = refreshTokenService.handleRefreshToken(user, loginRequest, userAgent, clientIp, now, request);
             updateUserLoginInfo(user, clientIp, now);
             boolean isSecure = RequestUtil.isRequestSecure(request);
             if (user.getFailedAttempts() >= maxDeviceAttempts && uniqueVisitorIdFailures >= globalMaxAttempts) {
@@ -177,10 +172,6 @@ public class LoginService {
         return updated;
     }
 
-    public boolean hasExceededSessionLimit(User user, int maxSessions, LocalDateTime now) {
-        return refreshTokenRepository.countActiveTokensByUser(user, now) >= maxSessions;
-    }
-
     private boolean verifyCredentials(LoginUserDto loginRequest, User user, String clientIp,
                                       long failedAttemptsFromDevice, LocalDateTime now, long uniqueVisitorIdFailures) {
         if (!user.isEnabled()) {
@@ -221,56 +212,6 @@ public class LoginService {
         }
     }
 
-    private RefreshToken handleRefreshToken(User user, LoginUserDto loginRequest,
-                                            String userAgent, String clientIp, LocalDateTime now, HttpServletRequest request) {
-
-        Optional<RefreshToken> existingOpt = refreshTokenRepository.lockByUserAndVisitorId(user, loginRequest.getVisitorId());
-        if (existingOpt.isPresent()) {
-            RefreshToken existing = existingOpt.get();
-            if (!shouldRotateToken(existing, now)) {
-                log.info("Reusing existing token ID {} for userId {}", existing.getId(), user.getId());
-                return existing;
-            }
-            existing.revoke(clientIp);
-            refreshTokenRepository.save(existing);
-        }
-        if (hasExceededSessionLimit(user, maxSessions, now)) {
-            throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
-        }
-        String tokenValue = UUID.randomUUID().toString();
-        String timezoneId = request.getHeader(DeviceConstants.HEADER_TIMEZONE);
-        LocalDateTime newExpiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
-        String deviceInfo = UserAgentParser.buildDeviceInfo(userAgent, request);
-        String loginTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
-        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo, clientIp, loginRequest.getVisitorId(), loginTime);
-    }
-
-    private boolean shouldRotateToken(RefreshToken existing, LocalDateTime now) {
-        if (existing.isExpired() || existing.isRevoked()) return true;
-
-        // Rotate if it will expire soon
-        Duration remaining = Duration.between(now, existing.getExpiryDate());
-        Duration total = Duration.between(existing.getCreatedAt(), existing.getExpiryDate());
-        return remaining.toMinutes() < (total.toMinutes() * 0.1); // less than 10% lifetime left
-    }
-
-    private RefreshToken createNewRefreshToken(User user, String tokenValue, LocalDateTime expiry,
-                                               String deviceInfo, String ip, String visitorId, String loginTime) {
-        // Check separately for visitorId and IP
-        boolean isNewDevice = !refreshTokenRepository.existsByUserAndVisitorId(user, visitorId)
-                && !refreshTokenRepository.existsByUserAndIpAddress(user, ip);
-
-        RefreshToken token = new RefreshToken(user, tokenValue, expiry, deviceInfo, ip, visitorId);
-        RefreshToken saved = refreshTokenRepository.save(token);
-
-        if (isNewDevice) {
-            log.info("New device login detected - userId: {}, IP: {}", user.getId(), ip);
-            asyncEmailNotificationService.produceLoginAlertNotification(user, ip, deviceInfo, loginTime);
-        }
-
-        return saved;
-    }
-
     private void updateUserLoginInfo(User user, String ip, LocalDateTime now) {
         userRepository.updateLastLogin(user.getId(), now, ip);
     }
@@ -295,21 +236,6 @@ public class LoginService {
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, jweCookie.toString())
                 .body(GeneralApiResponse.success("Login successful", new LoginResponse(userId, userName, lastLogin)));
-    }
-
-    @Transactional(readOnly = true)
-    public List<RefreshToken> getUserActiveSessions(User user) {
-        return refreshTokenRepository.findActiveTokensByUser(user, LocalDateTime.now());
-    }
-
-    @Transactional
-    public void revokeSession(User user, Long tokenId, String revokedByIp) {
-        refreshTokenRepository.revokeTokenForUser(tokenId, user, LocalDateTime.now(), revokedByIp);
-    }
-
-    @Transactional
-    public void revokeAllOtherSessions(User user, Long currentTokenId, String revokedByIp) {
-        refreshTokenRepository.revokeAllForUserExcept(user, currentTokenId, LocalDateTime.now(), revokedByIp);
     }
 
     private Duration getLockoutDuration() {
