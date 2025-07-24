@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Suspicious Login Attempts</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa&family=Open+Sans&display=swap');
+
+        body {
+            font-family: 'Open Sans', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e4edf3;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .email-container {
+            max-width: 620px;
+            margin: auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .email-header {
+            background-color: #00445d;
+            color: #ffffff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .email-header img {
+            height: 40px;
+        }
+
+        .slogan {
+            font-size: 14px;
+            color: #88b5c4;
+            margin-top: 5px;
+        }
+
+        .email-title {
+            padding: 20px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .email-subtitle {
+            padding: 0 20px 10px;
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .attempt-list {
+            padding: 0 30px;
+            font-size: 14px;
+        }
+
+        .attempt-item {
+            background-color: #f6f9fb;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-left: 4px solid #00445d;
+            border-radius: 6px;
+        }
+
+        .attempt-item span {
+            display: block;
+            margin: 4px 0;
+        }
+
+        .email-body {
+            padding: 15px 30px;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+        }
+
+        .email-body a {
+            color: #00445d;
+            text-decoration: underline;
+        }
+
+        .action-button {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .action-button a {
+            background-color: #00445d;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .action-button a:hover {
+            background-color: #003244;
+        }
+
+        .email-footer {
+            background-color: #f2f4f7;
+            padding: 15px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }
+
+        .email-footer a {
+            color: #00445d;
+        }
+
+        .app-name {
+            font-family: 'Comfortaa', cursive;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+
+    <!-- Header -->
+    <div class="email-header">
+        <img th:src="${logo}" alt="App Logo">
+        <div class="slogan">Centralize Your Clouds. Streamline Your Management.</div>
+    </div>
+
+    <!-- Title -->
+    <div class="email-title">
+        Suspicious Login Attempts Detected
+    </div>
+
+    <!-- Subtitle -->
+    <div class="email-subtitle">
+        Hello <strong th:text="${user.fullName}">User</strong>,<br/>
+        While you were away, someone tried to log in to your account and failed.
+    </div>
+
+    <!-- Attempts -->
+    <div class="attempt-list">
+        <div class="attempt-item" th:each="attempt : ${attempts}">
+            <span><strong>Time:</strong> <span th:text="${#temporals.format(attempt.attemptTime, 'dd MMM yyyy HH:mm')}"></span></span>
+            <span><strong>IP:</strong> <span th:text="${attempt.ipAddress}"></span></span>
+            <span><strong>User Agent:</strong> <span th:text="${attempt.userAgent}"></span></span>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="email-body">
+        <p>If this wasn't you, please <a th:href="${changePasswordUrl}">change your password</a> immediately and enable Two-Factor Authentication (2FA) for better protection.</p>
+    </div>
+
+    <!-- Button -->
+    <div class="action-button">
+        <a th:href="${changePasswordUrl}">Secure Your Account</a>
+    </div>
+
+    <!-- Footer -->
+    <div class="email-footer">
+        <p>Need help? <a href="mailto:support@chellavignesh.com">Contact Support</a></p>
+        <p>&copy; 2024 <span class="app-name">chellavignesh.com</span>. All rights reserved.</p>
+    </div>
+
+</div>
+</body>
+</html>

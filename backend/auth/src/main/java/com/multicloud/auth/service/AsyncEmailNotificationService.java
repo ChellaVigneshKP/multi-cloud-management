@@ -1,12 +1,11 @@
 package com.multicloud.auth.service;
 
 import com.multicloud.auth.component.EmailNotificationProducer;
+import com.multicloud.auth.entity.LoginAttempt;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.util.UserAgentParser;
-import com.multicloud.commonlib.email.EmailNotification;
-import com.multicloud.commonlib.email.LoginAlertEmailRequest;
-import com.multicloud.commonlib.email.PasswordResetEmailRequest;
-import com.multicloud.commonlib.email.VerificationEmailRequest;
+import com.multicloud.commonlib.email.*;
+import com.multicloud.commonlib.email.dto.SimpleLoginAttemptDTO;
 import com.multicloud.commonlib.exceptions.EmailNotificationPublishException;
 import com.multicloud.commonlib.util.common.MapUrlUtil;
 import org.slf4j.Logger;
@@ -15,12 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Optional;
+import java.util.List;
 
 @Service
 public class AsyncEmailNotificationService {
@@ -37,6 +31,7 @@ public class AsyncEmailNotificationService {
     private String frontendBaseUrl;
     @Value("${email.logo.url}")
     private String logoUrl;
+
     public AsyncEmailNotificationService(IpGeolocationService ipGeolocationService,
                                          @Value("${google.maps.api.key}") String googleMapsApiKey, EmailNotificationProducer emailNotificationProducer) {
         this.ipGeolocationService = ipGeolocationService;
@@ -51,7 +46,7 @@ public class AsyncEmailNotificationService {
             request.setTo(user.getEmail());
             request.setSubject("Password Reset Request for C-Cloud Account");
             request.setFirstName(user.getFirstName());
-            request.setResetLink(frontendBaseUrl+"/reset-password?token=" + user.getPasswordResetToken());
+            request.setResetLink(frontendBaseUrl + "/reset-password?token=" + user.getPasswordResetToken());
             request.setLogoUrl(logoUrl);
             EmailNotification notification = new EmailNotification();
             notification.setEmailRequest(request);
@@ -78,7 +73,7 @@ public class AsyncEmailNotificationService {
         String device = od[2];
         LoginAlertEmailRequest request = new LoginAlertEmailRequest();
         request.setTo(user.getEmail());
-        request.setSubject("New Login on C-Cloud from "+browser+" on "+os);
+        request.setSubject("New Login on C-Cloud from " + browser + " on " + os);
         request.setLogoUrl(logoUrl);
         request.setUsername(user.getUsername());
         request.setOs(os);
@@ -97,7 +92,7 @@ public class AsyncEmailNotificationService {
     }
 
     @Async("taskExecutor")
-    public void produceVerificationNotification(String to, String subject, User user){
+    public void produceVerificationNotification(String to, String subject, User user) {
         VerificationEmailRequest request = new VerificationEmailRequest();
         request.setTo(to);
         request.setSubject(subject);
@@ -111,15 +106,32 @@ public class AsyncEmailNotificationService {
     }
 
     @Async
-    public void produceAccountLockNotification(String email, String clientIp){
+    public void produceAccountLockNotification(String email, String clientIp) {
         // This method is intentionally left blank for future implementation
         logger.info("Account lock notification for email: {} from IP: {}", email, clientIp);
     }
 
     @Async
-    public void produceLoginFromNewDeviceNotification(User user, String clientIp, String userAgent, LocalDateTime lastLogin, String timezoneId) {
-        // This method is intentionally left blank for future implementation
-        logger.info("User {} logged in from a new device at {}", user.getUsername(), lastLogin);
+    public void produceLoginFromNewDeviceNotification(List<LoginAttempt> loginAttempts, String firstName, String email) {
+        List<SimpleLoginAttemptDTO> dtoAttempts = loginAttempts.stream()
+                .map(a -> new SimpleLoginAttemptDTO(
+                        a.getEmail(),
+                        a.getIpAddress(),
+                        a.getUserAgent(),
+                        a.getAttemptTime()
+                ))
+                .toList();
+        SuspiciousAlertEmailRequest request = new SuspiciousAlertEmailRequest();
+        request.setFirstName(firstName);
+        request.setAttempts(dtoAttempts);
+        request.setChangePasswordUrl(frontendBaseUrl + "/change-password?email=" + email);
+        request.setLogoUrl(logoUrl);
+        request.setSubject("Suspicious Login Attempts Detected");
+        request.setTo(email);
+        EmailNotification notification = new EmailNotification();
+        notification.setEmailRequest(request);
+        notification.setTemplateName("suspicious-login-alert-email");
+        emailNotificationProducer.sendEmailNotification(notification);
     }
 
 }

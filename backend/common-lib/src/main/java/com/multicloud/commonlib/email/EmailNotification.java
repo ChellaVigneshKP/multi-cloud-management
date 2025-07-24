@@ -19,5 +19,7 @@ public class EmailNotification {
      * Default constructor for EmailNotification.
      * Initializes the email request to null and template name to an empty string.
      */
-    public EmailNotification() {}
+    public EmailNotification() {
+        // Default constructor
+    }
 }

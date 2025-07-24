@@ -51,6 +51,13 @@ public class EmailService {
                 context.setVariable("changePasswordUrl", alertRequest.getChangePasswordUrl());
                 context.setVariable("deviceImagePath", alertRequest.getDeviceImagePath());
                 break;
+            case SUSPICIOUS_LOGIN_ALERT:
+                SuspiciousAlertEmailRequest suspiciousRequest = (SuspiciousAlertEmailRequest) request;
+                context.setVariable("firstName", suspiciousRequest.getFirstName());
+                context.setVariable("changePasswordUrl", suspiciousRequest.getChangePasswordUrl());
+                context.setVariable("attempts", suspiciousRequest.getAttempts());
+                context.setVariable("logoUrl", suspiciousRequest.getLogoUrl());
+                break;
         }
 
         String htmlContent = templateEngine.process(notification.getTemplateName(), context);
@@ -71,6 +78,8 @@ public class EmailService {
             return passwordResetEmailRequest.getLogoUrl();
         } else if (request instanceof LoginAlertEmailRequest loginAlertEmailRequest) {
             return loginAlertEmailRequest.getLogoUrl();
+        } else if (request instanceof SuspiciousAlertEmailRequest suspiciousAlertEmailRequest) {
+            return suspiciousAlertEmailRequest.getLogoUrl();
         }
         return "";
     }

@@ -32,5 +32,6 @@ public abstract class EmailRequest {
      * Default constructor for EmailRequest.
      */
     public EmailRequest() {
+        // Default constructor for deserialization
     }
 }

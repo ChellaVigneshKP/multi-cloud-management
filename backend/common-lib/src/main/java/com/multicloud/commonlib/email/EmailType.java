@@ -15,5 +15,9 @@ public enum EmailType {
     /**
      * Email sent when a login alert is triggered.
      */
-    LOGIN_ALERT
+    LOGIN_ALERT,
+    /**
+     * Email sent when a suspicious login is detected.
+     */
+    SUSPICIOUS_LOGIN_ALERT,
 }

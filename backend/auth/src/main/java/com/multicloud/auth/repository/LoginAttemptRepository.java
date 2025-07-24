@@ -27,4 +27,16 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Long
     @Query("DELETE FROM LoginAttempt la WHERE la.email = :email AND la.attemptTime > :since AND la.successful = false")
     void deleteFailedAttemptsByEmailSince(@Param("email") String email, @Param("since") LocalDateTime since);
 
+    @Query("""
+                SELECT la FROM LoginAttempt la
+                WHERE la.email = :email
+                  AND la.successful = false
+                  AND la.visitorId != :visitorId
+                  AND la.attemptTime > :since
+                ORDER BY la.attemptTime DESC
+            """)
+    List<LoginAttempt> findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(
+            @Param("email") String email,
+            @Param("visitorId") String visitorId,
+            @Param("since") LocalDateTime since);
 }

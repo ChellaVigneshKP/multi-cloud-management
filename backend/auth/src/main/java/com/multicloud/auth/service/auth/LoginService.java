@@ -37,6 +37,7 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -117,7 +118,8 @@ public class LoginService {
             updateUserLoginInfo(user, clientIp, now);
             boolean isSecure = RequestUtil.isRequestSecure(request);
             if (user.getFailedAttempts() >= maxDeviceAttempts && uniqueVisitorIdFailures >= globalMaxAttempts) {
-                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(user, clientIp, userAgent, now, InputSanitizer.sanitize(request.getHeader(DeviceConstants.HEADER_TIMEZONE)));
+                List<LoginAttempt> loginAttempts = loginAttemptRepository.findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(loginRequest.getEmail(), loginRequest.getVisitorId(), now.minusHours(lockoutWindowHours));
+                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(loginAttempts, user.getFirstName(), loginRequest.getEmail());
             }
             return buildSuccessResponse(user, refreshToken, loginRequest.isRemember(), isSecure);
         } catch (Exception e) {
