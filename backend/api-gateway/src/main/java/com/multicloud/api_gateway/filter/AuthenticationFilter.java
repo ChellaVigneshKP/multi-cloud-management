@@ -25,14 +25,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.stream.Stream;
 
+import static com.multicloud.commonlib.constants.AuthConstants.JWE_TOKEN_COOKIE_NAME;
+import static com.multicloud.commonlib.constants.AuthConstants.NOT_APPLICABLE;
+import static com.multicloud.commonlib.constants.DeviceConstants.*;
+
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationFilter.class);
     private final JweUtil jweUtil;
-    private static final String UNKNOWN_IP = "Unknown";
-    private static final String NOT_APPLICABLE = "N/A";
-    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
-    private static final String X_REAL_IP = "X-Real-IP";
 
     public AuthenticationFilter(JweUtil jweUtil) {
         super(Config.class);
@@ -45,7 +45,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             ServerHttpRequest request = exchange.getRequest();
             String requestPath = request.getURI().getPath();
             if (RouteValidator.getIsSecured().test(request)) {
-                HttpCookie jweTokenCookie = request.getCookies().getFirst("jweToken");
+                HttpCookie jweTokenCookie = request.getCookies().getFirst(JWE_TOKEN_COOKIE_NAME);
                 String jweToken = jweTokenCookie != null ? jweTokenCookie.getValue() : null;
                 if (jweToken == null) {
                     return handleException(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "Missing authorization cookie");
@@ -70,11 +70,11 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                         @Override
                         public @NonNull HttpHeaders getHeaders() {
                             HttpHeaders headers = super.getHeaders();
-                            headers.set("X-User-Name", username);
-                            headers.set("X-User-Email", email);
-                            headers.set("X-User-Id", userId);
-                            headers.set("X-User-IP", ipAddressV4);
-                            headers.set("X-User-IP-V6", ipAddressV6);
+                            headers.set(X_USER_NAME, username);
+                            headers.set(X_USER_EMAIL, email);
+                            headers.set(X_USER_ID, userId);
+                            headers.set(HEADER_IPV4, ipAddressV4);
+                            headers.set(HEADER_IPV6, ipAddressV6);
                             return headers;
                         }
                     };
@@ -96,8 +96,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     @Override
                     public @NonNull HttpHeaders getHeaders() {
                         HttpHeaders headers = super.getHeaders();
-                        headers.set("X-User-IP", ipAddressV4);
-                        headers.set("X-User-IP-V6", ipAddressV6);
+                        headers.set(HEADER_IPV4, ipAddressV4);
+                        headers.set(HEADER_IPV6, ipAddressV6);
                         return headers;
                     }
                 };
@@ -113,7 +113,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
         // Get all potential IP sources
         String ipToCheck = Stream.of(
                         request.getHeaders().getFirst(X_FORWARDED_FOR),
-                        request.getHeaders().getFirst(X_REAL_IP),
+                        request.getHeaders().getFirst(HEADER_REAL_IP),
                         request.getRemoteAddress() != null ?
                                 request.getRemoteAddress().getAddress().getHostAddress() : null
                 )
@@ -129,17 +129,14 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                 if (inetAddress instanceof Inet4Address) {
                     ipAddressV4 = inetAddress.getHostAddress();
                     ipAddressV6 = NOT_APPLICABLE;
-                }
-                else if (inetAddress instanceof Inet6Address) {
+                } else if (inetAddress instanceof Inet6Address) {
                     ipAddressV6 = inetAddress.getHostAddress();
                     ipAddressV4 = ipAddressV6.startsWith("::ffff:") ?
                             ipAddressV6.substring(7) : NOT_APPLICABLE;
                 }
-            }
-            catch (UnknownHostException e) {
+            } catch (UnknownHostException e) {
                 logger.debug("Invalid IP address format '{}'", ipToCheck);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 logger.error("Unexpected error parsing IP '{}'", ipToCheck, e);
             }
         }

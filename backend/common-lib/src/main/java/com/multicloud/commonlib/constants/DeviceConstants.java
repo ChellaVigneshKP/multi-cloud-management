@@ -95,6 +95,42 @@ public class DeviceConstants {
      * Header for Timezone Offset
      */
     public static final String HEADER_TIMEZONE_OFFSET = "X-Timezone-Offset";
+    /**
+     * Header for HSTS (HTTP Strict Transport Security)
+     */
+    public static final String HSTS_HEADER_VALUE = "max-age=31536000; includeSubDomains; preload";
+    /**
+     * Header for Ipv4
+     */
+    public static final String HEADER_IPV4 = "X-User-IP";
+    /**
+     * Header for Ipv6
+     */
+    public static final String HEADER_IPV6 = "X-User-IP-V6";
+    /**
+     * Header for Unknown IP
+     */
+    public static final String UNKNOWN_IP = "Unknown";
+    /**
+     * Header for Real Ip
+     */
+    public static final String HEADER_REAL_IP = "X-Real-IP";
+    /**
+     * Header for Forwarded For
+     */
+    public static final String X_FORWARDED_FOR = "X-Forwarded-For";
+    /**
+     * Header for Username
+     */
+    public static final String X_USER_NAME = "X-User-Name";
+    /**
+     * Header for User Email
+     */
+    public static final String X_USER_EMAIL = "X-User-Email";
+    /**
+     * Header for User Id
+     */
+    public static final String X_USER_ID = "X-User-Id";
 
 
 }
