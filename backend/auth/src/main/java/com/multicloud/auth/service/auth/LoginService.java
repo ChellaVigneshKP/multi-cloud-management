@@ -21,7 +21,6 @@ import com.multicloud.commonlib.util.common.InputSanitizer;
 import com.multicloud.commonlib.util.common.LoginTimeUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -99,7 +98,6 @@ public class LoginService {
 
     @Transactional
     public ResponseEntity<GeneralApiResponse<LoginResponse>> handleLogin(LoginUserDto loginRequest, String userAgent, HttpServletRequest request) {
-        try {
             validateLoginRequest(loginRequest);
             String clientIp = RequestUtil.getClientIp(request);
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
@@ -107,17 +105,11 @@ public class LoginService {
             long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
                     loginRequest.getEmail(), loginRequest.getVisitorId(), lockWindowStart);
             if (failedAttemptsFromDevice >= maxDeviceAttempts) {
-                log.warn("Too many failed attempts from device for email: {}", DigestUtils.sha256Hex(InputSanitizer.sanitize(loginRequest.getEmail())));
+                log.warn("Too many failed attempts from device for visitorId: {}", loginRequest.getVisitorId());
                 throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
             }
             long uniqueVisitorIdFailures = loginAttemptRepository.countDistinctFailedVisitorIds(loginRequest.getEmail(), lockWindowStart);
             return processAuthenticationFlow(loginRequest, userAgent, request, clientIp, now, failedAttemptsFromDevice, uniqueVisitorIdFailures);
-        } catch (Exception e) {
-            String exceptionName = e.getClass().getSimpleName();
-            String emailHash = DigestUtils.sha256Hex(loginRequest.getEmail());
-            log.error("{} occurred during login [email_hash={}]", exceptionName, emailHash);
-            throw e;
-        }
     }
 
     private ResponseEntity<GeneralApiResponse<LoginResponse>> processAuthenticationFlow(LoginUserDto loginRequest, String userAgent, HttpServletRequest request, String clientIp, LocalDateTime now, long failedAttemptsFromDevice, long uniqueVisitorIdFailures) {
