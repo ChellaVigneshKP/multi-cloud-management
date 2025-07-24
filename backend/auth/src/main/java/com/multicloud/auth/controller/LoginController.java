@@ -8,7 +8,7 @@ import com.multicloud.auth.service.AuthenticationService;
 import com.multicloud.auth.service.auth.LoginService;
 import com.multicloud.auth.service.auth.LogoutService;
 import com.multicloud.commonlib.constants.AuthConstants;
-import com.multicloud.commonlib.util.common.InputSanitizer;
+import io.getunleash.Unleash;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,15 +33,17 @@ public class LoginController {
     private final HttpServletRequest request;
     private final LoginService loginService;
     private final LogoutService logoutService;
+    private final Unleash unleash;
 
     public LoginController( LogoutService logoutService,
                            AuthenticationService authenticationService,
                            HttpServletRequest request,
-                           LoginService loginService) {
+                           LoginService loginService,Unleash unleash) {
         this.authenticationService = authenticationService;
         this.request = request;
         this.loginService = loginService;
         this.logoutService = logoutService;
+        this.unleash = unleash;
     }
 
     @Operation(summary = "User login", description = "Authenticate an existing user and generate a JWT token")
@@ -56,12 +58,10 @@ public class LoginController {
     })
     @PostMapping("/login")
     public ResponseEntity<GeneralApiResponse<LoginResponse>> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
-        LoginUserDto sanitizedDto = new LoginUserDto();
-        sanitizedDto.setEmail(InputSanitizer.sanitize(loginUserDto.getEmail()));
-        sanitizedDto.setPassword(InputSanitizer.sanitize(loginUserDto.getPassword()));
-        sanitizedDto.setVisitorId(InputSanitizer.sanitize(loginUserDto.getVisitorId()));
-        sanitizedDto.setRemember(loginUserDto.isRemember());
-        return loginService.handleLogin(sanitizedDto, userAgent, request);
+//        if(unleash.isEnabled("2fa_enabled")){
+//            logger.info("2FA is enabled");
+//        }
+        return loginService.handleLogin(loginUserDto, userAgent, request);
     }
 
 

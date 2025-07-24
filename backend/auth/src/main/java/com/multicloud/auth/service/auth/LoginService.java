@@ -107,7 +107,7 @@ public class LoginService {
             long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
                     loginRequest.getEmail(), loginRequest.getVisitorId(), lockWindowStart);
             if (failedAttemptsFromDevice >= maxDeviceAttempts) {
-                log.warn("Too many failed attempts from device for email: {}", InputSanitizer.sanitize(loginRequest.getEmail()));
+                log.warn("Too many failed attempts from device for email: {}", DigestUtils.sha256Hex(InputSanitizer.sanitize(loginRequest.getEmail())));
                 throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
             }
             long uniqueVisitorIdFailures = loginAttemptRepository.countDistinctFailedVisitorIds(loginRequest.getEmail(), lockWindowStart);
