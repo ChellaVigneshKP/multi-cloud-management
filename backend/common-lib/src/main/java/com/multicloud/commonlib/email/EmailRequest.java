@@ -21,7 +21,9 @@ import lombok.Setter;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PasswordResetEmailRequest.class, name = "PASSWORD_RESET"),
         @JsonSubTypes.Type(value = LoginAlertEmailRequest.class, name = "LOGIN_ALERT"),
-        @JsonSubTypes.Type(value = VerificationEmailRequest.class, name = "VERIFICATION")
+        @JsonSubTypes.Type(value = VerificationEmailRequest.class, name = "VERIFICATION"),
+        @JsonSubTypes.Type(value = SuspiciousAlertEmailRequest.class, name = "SUSPICIOUS_LOGIN_ALERT"),
+        @JsonSubTypes.Type(value = AccountLockedEmailRequest.class, name = "ACCOUNT_LOCKED")
 })
 public abstract class EmailRequest {
     private String to;
@@ -31,7 +33,7 @@ public abstract class EmailRequest {
     /**
      * Default constructor for EmailRequest.
      */
-    public EmailRequest() {
+    protected EmailRequest() {
         // Default constructor for deserialization
     }
 }

@@ -13,7 +13,6 @@ import com.multicloud.auth.service.JweService;
 import com.multicloud.auth.util.CookieUtil;
 import com.multicloud.auth.util.RequestUtil;
 import com.multicloud.commonlib.constants.AuthConstants;
-import com.multicloud.commonlib.constants.DeviceConstants;
 import com.multicloud.commonlib.exceptions.AccountLockedException;
 import com.multicloud.commonlib.exceptions.AccountNotVerifiedException;
 import com.multicloud.commonlib.exceptions.TooManyDeviceAttemptsException;

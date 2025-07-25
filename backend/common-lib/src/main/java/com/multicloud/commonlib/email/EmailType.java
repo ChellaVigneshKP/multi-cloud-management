@@ -20,4 +20,8 @@ public enum EmailType {
      * Email sent when a suspicious login is detected.
      */
     SUSPICIOUS_LOGIN_ALERT,
+    /**
+     * Email sent when an account is locked due to suspicious activity.
+     */
+    ACCOUNT_LOCKED_ALERT,
 }
