@@ -106,8 +106,19 @@ public class AsyncEmailNotificationService {
     }
 
     @Async
-    public void produceAccountLockNotification(String email, String clientIp) {
-        // This method is intentionally left blank for future implementation
+    public void produceAccountLockNotification(String email, String clientIp, String lockTime, String firstname) {
+        String testIp = "27.5.140.237";
+        AccountLockedEmailRequest request = new AccountLockedEmailRequest();
+        String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
+        String city = locationDetails[0];
+        request.setTo(email);
+        request.setSubject("Account Locked Due to Suspicious Activity");
+        request.setLogoUrl(logoUrl);
+        request.setFirstName(firstname);
+        request.setClientIp(clientIp);
+        request.setLocation(city);
+        request.setLockTime(lockTime);
+        request.setUnlockSupportLink(frontendBaseUrl + "/support/unlock-account?email=" + email);
         logger.info("Account lock notification for email: {} from IP: {}", email, clientIp);
     }
 

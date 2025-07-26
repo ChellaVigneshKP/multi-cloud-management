@@ -13,11 +13,13 @@ import com.multicloud.auth.service.JweService;
 import com.multicloud.auth.util.CookieUtil;
 import com.multicloud.auth.util.RequestUtil;
 import com.multicloud.commonlib.constants.AuthConstants;
+import com.multicloud.commonlib.constants.DeviceConstants;
 import com.multicloud.commonlib.exceptions.AccountLockedException;
 import com.multicloud.commonlib.exceptions.AccountNotVerifiedException;
 import com.multicloud.commonlib.exceptions.TooManyDeviceAttemptsException;
 import com.multicloud.commonlib.exceptions.UsernameNotFoundException;
 import com.multicloud.commonlib.util.common.InputSanitizer;
+import com.multicloud.commonlib.util.common.LoginTimeUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
@@ -110,7 +112,8 @@ public class LoginService {
     private ResponseEntity<GeneralApiResponse<LoginResponse>> processAuthenticationFlow(LoginUserDto loginRequest, String userAgent, HttpServletRequest request, String clientIp, LocalDateTime now, long failedAttemptsFromDevice, long uniqueVisitorIdFailures) {
         Optional<User> cachedUserOpt = getUserByEmail(loginRequest.getEmail());
         try {
-            User user = authenticateUser(loginRequest, now, clientIp, failedAttemptsFromDevice, uniqueVisitorIdFailures, cachedUserOpt);
+            String timezoneId = request.getHeader(DeviceConstants.HEADER_TIMEZONE);
+            User user = authenticateUser(loginRequest, now, clientIp, failedAttemptsFromDevice, uniqueVisitorIdFailures, cachedUserOpt, timezoneId);
             log.info("User login successful - userId: {}, IP: {}", user.getId(), clientIp);
             recordLoginAttempt(user, loginRequest.getEmail(), true, clientIp, userAgent, null, loginRequest.getVisitorId());
             RefreshToken refreshToken = refreshTokenService.handleRefreshToken(user, loginRequest, userAgent, clientIp, now, request);
@@ -147,12 +150,12 @@ public class LoginService {
         return userRepository.findByEmail(email);
     }
 
-    protected User authenticateUser(LoginUserDto loginRequest, LocalDateTime now, String clientIp, long failedAttemptsFromDevice, long uniqueVisitorIdFailures, Optional<User> cachedUserOpt) {
+    protected User authenticateUser(LoginUserDto loginRequest, LocalDateTime now, String clientIp, long failedAttemptsFromDevice, long uniqueVisitorIdFailures, Optional<User> cachedUserOpt, String timeZoneId) {
         if (cachedUserOpt.isEmpty()) {
             throw new UsernameNotFoundException(INVALID_CREDENTIALS);
         }
         User user = cachedUserOpt.get();
-        boolean updated = verifyCredentials(loginRequest, user, clientIp, failedAttemptsFromDevice, now, uniqueVisitorIdFailures);
+        boolean updated = verifyCredentials(loginRequest, user, clientIp, failedAttemptsFromDevice, now, uniqueVisitorIdFailures, timeZoneId);
         updated |= checkAccountStatus(user, now);
         if (updated) {
             userRepository.save(user);
@@ -174,7 +177,7 @@ public class LoginService {
     }
 
     private boolean verifyCredentials(LoginUserDto loginRequest, User user, String clientIp,
-                                      long failedAttemptsFromDevice, LocalDateTime now, long uniqueVisitorIdFailures) {
+                                      long failedAttemptsFromDevice, LocalDateTime now, long uniqueVisitorIdFailures, String timezoneId) {
         if (!user.isEnabled()) {
             throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
         }
@@ -190,14 +193,14 @@ public class LoginService {
                 return true;
             }
         } catch (AuthenticationException e) {
-            handleFailedLogin(user, failedAttemptsFromDevice, clientIp, now, uniqueVisitorIdFailures);
+            handleFailedLogin(user, failedAttemptsFromDevice, clientIp, now, uniqueVisitorIdFailures, timezoneId);
             throw e;
         }
         return false;
     }
 
     private void handleFailedLogin(User user, long deviceAttempts, String ip,
-                                   LocalDateTime now, long uniqueVisitorIdFailures) {
+                                   LocalDateTime now, long uniqueVisitorIdFailures, String timezoneId) {
         boolean shouldLock = deviceAttempts >= maxDeviceAttempts
                 && uniqueVisitorIdFailures >= globalMaxAttempts;
         int newAttempts = user.getFailedAttempts() + 1;
@@ -209,7 +212,8 @@ public class LoginService {
                 willLock ? now.plus(getLockoutDuration()) : null
         );
         if (willLock) {
-            asyncEmailNotificationService.produceAccountLockNotification(user.getEmail(), ip);
+            String lockTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
+            asyncEmailNotificationService.produceAccountLockNotification(user.getEmail(), ip, lockTime, user.getFirstName());
         }
     }
 
