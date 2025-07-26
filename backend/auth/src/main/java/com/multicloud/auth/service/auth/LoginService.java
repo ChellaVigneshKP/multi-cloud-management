@@ -1,5 +1,6 @@
 package com.multicloud.auth.service.auth;
 
+import com.multicloud.auth.config.AuthProperties;
 import com.multicloud.auth.dto.LoginProcessParameters;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.responses.GeneralApiResponse;
@@ -22,9 +23,7 @@ import com.multicloud.commonlib.exceptions.UsernameNotFoundException;
 import com.multicloud.commonlib.util.common.InputSanitizer;
 import com.multicloud.commonlib.util.common.LoginTimeUtil;
 import jakarta.validation.constraints.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -42,9 +41,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class LoginService {
 
-    private static final Logger log = LoggerFactory.getLogger(LoginService.class);
     private static final String INVALID_CREDENTIALS = "Invalid credentials";
 
     private final AuthenticationManager authenticationManager;
@@ -53,30 +52,7 @@ public class LoginService {
     private final LoginAttemptRepository loginAttemptRepository;
     private final AsyncEmailNotificationService asyncEmailNotificationService;
     private final RefreshTokenService refreshTokenService;
-
-    @Value("${auth.token.expiry.remember-days:30}")
-    private int rememberExpiryDays;
-
-    @Value("${auth.token.expiry.normal-days:7}")
-    private int normalExpiryDays;
-
-    @Value("${auth.failure.max-attempts:10}")
-    private int maxAuthAttempts;
-
-    @Value("${auth.failure.device-max-attempts:5}")
-    private int maxDeviceAttempts;
-
-    @Value("${auth.failure.global-max-attempts:2}")
-    private int globalMaxAttempts;
-
-    @Value("${auth.failure.lockout-window-hours:1}")
-    private int lockoutWindowHours;
-
-    @Value("${auth.failure.lockout-duration-minutes:30}")
-    private int lockoutDurationMinutes;
-
-    @Value("${auth.cookie.same-site:Lax}")
-    private String cookieSameSite;
+    private final AuthProperties authProperties;
 
     public LoginService(
             AuthenticationManager authenticationManager,
@@ -84,6 +60,7 @@ public class LoginService {
             UserRepository userRepository,
             LoginAttemptRepository loginAttemptRepository,
             AsyncEmailNotificationService asyncEmailNotificationService,
+            AuthProperties authProperties,
             RefreshTokenService refreshTokenService) {
         this.authenticationManager = authenticationManager;
         this.jweService = jweService;
@@ -91,6 +68,7 @@ public class LoginService {
         this.loginAttemptRepository = loginAttemptRepository;
         this.asyncEmailNotificationService = asyncEmailNotificationService;
         this.refreshTokenService = refreshTokenService;
+        this.authProperties = authProperties;
     }
 
     @Transactional
@@ -98,11 +76,11 @@ public class LoginService {
         validateLoginRequest(loginProcessParameters.getLoginRequest());
         loginProcessParameters.setClientIp(RequestUtil.getClientIp(loginProcessParameters.getRequest()));
         loginProcessParameters.setNow(LocalDateTime.now(ZoneOffset.UTC));
-        LocalDateTime lockWindowStart = loginProcessParameters.getNow().minusHours(lockoutWindowHours);
+        LocalDateTime lockWindowStart = loginProcessParameters.getNow().minusHours(authProperties.getFailure().lockoutWindowHours());
         long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
                 loginProcessParameters.getLoginRequest().getEmail(), loginProcessParameters.getLoginRequest().getVisitorId(), lockWindowStart);
         loginProcessParameters.setFailedAttemptsFromDevice(failedAttemptsFromDevice);
-        if (failedAttemptsFromDevice >= maxDeviceAttempts) {
+        if (failedAttemptsFromDevice >= authProperties.getFailure().deviceMaxAttempts()) {
             log.warn("Too many failed attempts from device for visitorId: {}", loginProcessParameters.getLoginRequest().getVisitorId());
             throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
         }
@@ -120,8 +98,8 @@ public class LoginService {
             RefreshToken refreshToken = refreshTokenService.handleRefreshToken(user, loginProcessParameters);
             updateUserLoginInfo(user, loginProcessParameters.getClientIp(), loginProcessParameters.getNow());
             boolean isSecure = RequestUtil.isRequestSecure(loginProcessParameters.getRequest());
-            if (user.getFailedAttempts() >= maxDeviceAttempts && loginProcessParameters.getUniqueVisitorIdFailures() >= globalMaxAttempts) {
-                List<LoginAttempt> loginAttempts = loginAttemptRepository.findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(loginProcessParameters.getLoginRequest().getEmail(), loginProcessParameters.getLoginRequest().getVisitorId(), loginProcessParameters.getNow().minusHours(lockoutWindowHours));
+            if (user.getFailedAttempts() >= authProperties.getFailure().deviceMaxAttempts() && loginProcessParameters.getUniqueVisitorIdFailures() >= authProperties.getFailure().globalMaxAttempts()) {
+                List<LoginAttempt> loginAttempts = loginAttemptRepository.findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(loginProcessParameters.getLoginRequest().getEmail(), loginProcessParameters.getLoginRequest().getVisitorId(), loginProcessParameters.getNow().minusHours(authProperties.getFailure().lockoutWindowHours()));
                 asyncEmailNotificationService.produceLoginFromNewDeviceNotification(loginAttempts, user.getFirstName(), loginProcessParameters.getLoginRequest().getEmail());
             }
             return buildSuccessResponse(user, refreshToken, loginProcessParameters.getLoginRequest().isRemember(), isSecure);
@@ -200,10 +178,10 @@ public class LoginService {
     }
 
     private void handleFailedLogin(User user, LoginProcessParameters loginProcessParameters) {
-        boolean shouldLock = loginProcessParameters.getFailedAttemptsFromDevice() >= maxDeviceAttempts
-                && loginProcessParameters.getUniqueVisitorIdFailures() >= globalMaxAttempts;
+        boolean shouldLock = loginProcessParameters.getFailedAttemptsFromDevice() >= authProperties.getFailure().deviceMaxAttempts()
+                && loginProcessParameters.getUniqueVisitorIdFailures() >= authProperties.getFailure().globalMaxAttempts();
         int newAttempts = user.getFailedAttempts() + 1;
-        boolean willLock = shouldLock || newAttempts >= maxAuthAttempts;
+        boolean willLock = shouldLock || newAttempts >= authProperties.getFailure().maxAttempts();
         userRepository.updateFailedAttemptsAndLockStatus(
                 user.getId(),
                 newAttempts,
@@ -223,15 +201,15 @@ public class LoginService {
     private ResponseEntity<GeneralApiResponse<LoginResponse>> buildSuccessResponse(User user, RefreshToken token,
                                                                                    boolean rememberMe, boolean isSecure) {
         String jwe = jweService.generateToken(user);
-        Duration refreshExpiry = rememberMe ? Duration.ofDays(rememberExpiryDays) : Duration.ofDays(normalExpiryDays);
+        Duration refreshExpiry = rememberMe ? Duration.ofDays(authProperties.getToken().expiryRememberDays()) : Duration.ofDays(authProperties.getToken().expiryNormalDays());
 
         ResponseCookie refreshCookie = CookieUtil.createCookie(
                 AuthConstants.REFRESH_TOKEN_COOKIE_NAME, token.getToken(),
-                refreshExpiry, true, isSecure, cookieSameSite);
+                refreshExpiry, true, isSecure, authProperties.getCookie().sameSite());
 
         ResponseCookie jweCookie = CookieUtil.createCookie(
                 AuthConstants.JWE_TOKEN_COOKIE_NAME, jwe,
-                Duration.ofMillis(jweService.getExpirationTime()), true, isSecure, cookieSameSite);
+                Duration.ofMillis(jweService.getExpirationTime()), true, isSecure, authProperties.getCookie().sameSite());
 
         String userId = user.getId() != null ? InputSanitizer.sanitize(user.getId().toString()) : null;
         String userName = InputSanitizer.sanitize(user.getUsername());
@@ -243,6 +221,6 @@ public class LoginService {
     }
 
     private Duration getLockoutDuration() {
-        return Duration.ofMinutes(lockoutDurationMinutes);
+        return Duration.ofMinutes(authProperties.getFailure().lockoutDurationMinutes());
     }
 }
