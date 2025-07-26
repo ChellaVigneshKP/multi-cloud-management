@@ -2,12 +2,14 @@ package com.multicloud.auth.exception;
 
 import com.multicloud.auth.dto.responses.GeneralApiResponse;
 import com.multicloud.commonlib.exceptions.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(AccountLockedException.class)
@@ -48,5 +50,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<GeneralApiResponse<Void>> handleAuthenticationException(AuthenticationException e) {
         return ResponseEntity.status(401).body(GeneralApiResponse.fail("Authentication failed"));
+    }
+
+    @ExceptionHandler(EmailNotificationPublishException.class)
+    public void handleEmailNotificationPublishException(EmailNotificationPublishException e) {
+        log.error("Failed to send email notification: {}", e.getMessage());
     }
 }

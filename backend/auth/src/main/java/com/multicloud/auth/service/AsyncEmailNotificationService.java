@@ -41,54 +41,35 @@ public class AsyncEmailNotificationService {
 
     @Async("taskExecutor")
     public void producePasswordResetNotification(User user) {
-        try {
-            PasswordResetEmailRequest request = new PasswordResetEmailRequest();
-            request.setTo(user.getEmail());
-            request.setSubject("Password Reset Request for C-Cloud Account");
-            request.setFirstName(user.getFirstName());
-            request.setResetLink(frontendBaseUrl + "/reset-password?token=" + user.getPasswordResetToken());
-            request.setLogoUrl(logoUrl);
-            EmailNotification notification = new EmailNotification();
-            notification.setEmailRequest(request);
-            notification.setTemplateName("password-reset-email");
-            emailNotificationProducer.sendEmailNotification(notification);
-            logger.info("Password reset email sent to: {}", user.getEmail());
-        } catch (Exception e) {
-            throw new EmailNotificationPublishException("Failed to send password reset email to " + user.getEmail(), e);
-        }
+        PasswordResetEmailRequest request = new PasswordResetEmailRequest();
+        request.setTo(user.getEmail());
+        request.setSubject("Password Reset Request for C-Cloud Account");
+        request.setFirstName(user.getFirstName());
+        request.setResetLink(frontendBaseUrl + "/reset-password?token=" + user.getPasswordResetToken());
+        request.setLogoUrl(logoUrl);
+        sendEmailNotification(request, "password-reset-email");
     }
 
     @Async("taskExecutor")
     public void produceLoginAlertNotification(User user, String clientIp, String userAgent, String loginTime) {
         String testIp = "27.5.140.237";
         String[] locationDetails = ipGeolocationService.getGeolocation(testIp);
-        String city = locationDetails[0];
-        String region = locationDetails[1];
-        String country = locationDetails[2];
-        String loc = locationDetails[3]; // Latitude, Longitude
-        String mapUrl = MapUrlUtil.generateMapUrl(loc, googleMapsApiKey);
-        String[] od = UserAgentParser.parseUserAgent(userAgent);
-        String browser = od[0];
-        String os = od[1];
-        String device = od[2];
+        String[] deviceDetails = UserAgentParser.parseUserAgent(userAgent);
         LoginAlertEmailRequest request = new LoginAlertEmailRequest();
         request.setTo(user.getEmail());
-        request.setSubject("New Login on C-Cloud from " + browser + " on " + os);
+        request.setSubject(String.format("New Login on C-Cloud from %s on %s", deviceDetails[0], deviceDetails[1]));
         request.setLogoUrl(logoUrl);
         request.setUsername(user.getUsername());
-        request.setOs(os);
-        request.setBrowser(browser);
-        request.setLocation(city + ", " + region);
+        request.setOs(deviceDetails[1]);
+        request.setBrowser(deviceDetails[0]);
+        request.setLocation(String.format("%s, %s", locationDetails[0], locationDetails[1]));
         request.setClientIp(clientIp);
-        request.setCountry(country);
+        request.setCountry(locationDetails[2]);
         request.setFormattedLoginTime(loginTime);
-        request.setMapUrl(mapUrl);
+        request.setMapUrl(MapUrlUtil.generateMapUrl(locationDetails[3], googleMapsApiKey));
         request.setChangePasswordUrl(frontendBaseUrl + "/change-password?email=" + user.getEmail());
-        request.setDeviceImagePath(device.equalsIgnoreCase("Mobile") ? mobileImagePath : desktopImagePath);
-        EmailNotification notification = new EmailNotification();
-        notification.setEmailRequest(request);
-        notification.setTemplateName("login-alert-email");
-        emailNotificationProducer.sendEmailNotification(notification);
+        request.setDeviceImagePath(deviceDetails[2].equalsIgnoreCase("Mobile") ? mobileImagePath : desktopImagePath);
+        sendEmailNotification(request, "login-alert-email");
     }
 
     @Async("taskExecutor")
@@ -99,10 +80,7 @@ public class AsyncEmailNotificationService {
         request.setFirstName(user.getFirstName());
         request.setVerificationCode(user.getVerificationCode());
         request.setLogoUrl(logoUrl);
-        EmailNotification notification = new EmailNotification();
-        notification.setEmailRequest(request);
-        notification.setTemplateName("verification-email");
-        emailNotificationProducer.sendEmailNotification(notification);
+        sendEmailNotification(request, "verification-email");
     }
 
     @Async
@@ -120,17 +98,13 @@ public class AsyncEmailNotificationService {
         request.setLockTime(lockTime);
         request.setUnlockSupportLink(frontendBaseUrl + "/support/unlock-account?email=" + email);
         logger.info("Account lock notification for email: {} from IP: {}", email, clientIp);
+        sendEmailNotification(request, "account-lock-alert-email");
     }
 
     @Async
     public void produceLoginFromNewDeviceNotification(List<LoginAttempt> loginAttempts, String firstName, String email) {
         List<SimpleLoginAttemptDTO> dtoAttempts = loginAttempts.stream()
-                .map(a -> new SimpleLoginAttemptDTO(
-                        a.getEmail(),
-                        a.getIpAddress(),
-                        a.getUserAgent(),
-                        a.getAttemptTime()
-                ))
+                .map(this::convertToSimpleLoginAttemptDTO)
                 .toList();
         SuspiciousAlertEmailRequest request = new SuspiciousAlertEmailRequest();
         request.setFirstName(firstName);
@@ -139,10 +113,27 @@ public class AsyncEmailNotificationService {
         request.setLogoUrl(logoUrl);
         request.setSubject("Suspicious Login Attempts Detected");
         request.setTo(email);
-        EmailNotification notification = new EmailNotification();
-        notification.setEmailRequest(request);
-        notification.setTemplateName("suspicious-login-alert-email");
-        emailNotificationProducer.sendEmailNotification(notification);
+        sendEmailNotification(request, "suspicious-login-alert-email");
     }
 
+    private SimpleLoginAttemptDTO convertToSimpleLoginAttemptDTO(LoginAttempt attempt) {
+        return new SimpleLoginAttemptDTO(
+                attempt.getEmail(),
+                attempt.getIpAddress(),
+                attempt.getUserAgent(),
+                attempt.getAttemptTime()
+        );
+    }
+
+    private void sendEmailNotification(EmailRequest request, String templateName) {
+        EmailNotification notification = new EmailNotification();
+        notification.setEmailRequest(request);
+        notification.setTemplateName(templateName);
+        try {
+            emailNotificationProducer.sendEmailNotification(notification);
+            logger.info("Email notification sent successfully: {}", request.getTo());
+        } catch (Exception e) {
+            throw new EmailNotificationPublishException("Failed to send email notification", e);
+        }
+    }
 }
