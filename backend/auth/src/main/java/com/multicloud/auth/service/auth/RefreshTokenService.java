@@ -1,6 +1,6 @@
 package com.multicloud.auth.service.auth;
 
-import com.multicloud.auth.dto.LoginUserDto;
+import com.multicloud.auth.dto.LoginProcessParameters;
 import com.multicloud.auth.entity.RefreshToken;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
@@ -9,7 +9,6 @@ import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.constants.DeviceConstants;
 import com.multicloud.commonlib.exceptions.TooManySessionsException;
 import com.multicloud.commonlib.util.common.LoginTimeUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,27 +41,26 @@ public class RefreshTokenService {
         this.asyncEmailNotificationService = asyncEmailNotificationService;
     }
 
-    public RefreshToken handleRefreshToken(User user, LoginUserDto loginRequest,
-                                           String userAgent, String clientIp, LocalDateTime now, HttpServletRequest request) {
-        Optional<RefreshToken> existingOpt = refreshTokenRepository.lockByUserAndVisitorId(user, loginRequest.getVisitorId());
+    public RefreshToken handleRefreshToken(User user, LoginProcessParameters loginProcessParameters) {
+        Optional<RefreshToken> existingOpt = refreshTokenRepository.lockByUserAndVisitorId(user, loginProcessParameters.getLoginRequest().getVisitorId());
         if (existingOpt.isPresent()) {
             RefreshToken existing = existingOpt.get();
-            if (!shouldRotateToken(existing, now)) {
+            if (!shouldRotateToken(existing, loginProcessParameters.getNow())) {
                 log.info("Reusing existing token ID {} for userId {}", existing.getId(), user.getId());
                 return existing;
             }
-            existing.revoke(clientIp);
+            existing.revoke(loginProcessParameters.getClientIp());
             refreshTokenRepository.save(existing);
         }
-        if (hasExceededSessionLimit(user, maxSessions, now)) {
+        if (hasExceededSessionLimit(user, maxSessions, loginProcessParameters.getNow())) {
             throw new TooManySessionsException("Maximum active sessions reached. Please logout from another device.");
         }
         String tokenValue = UUID.randomUUID().toString();
-        String timezoneId = request.getHeader(DeviceConstants.HEADER_TIMEZONE);
-        LocalDateTime newExpiry = now.plusDays(loginRequest.isRemember() ? rememberExpiryDays : normalExpiryDays);
-        String deviceInfo = UserAgentParser.buildDeviceInfo(userAgent, request);
-        String loginTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
-        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo, clientIp, loginRequest.getVisitorId(), loginTime);
+        String timezoneId = loginProcessParameters.getRequest().getHeader(DeviceConstants.HEADER_TIMEZONE);
+        LocalDateTime newExpiry = loginProcessParameters.getNow().plusDays(loginProcessParameters.getLoginRequest().isRemember() ? rememberExpiryDays : normalExpiryDays);
+        String deviceInfo = UserAgentParser.buildDeviceInfo(loginProcessParameters.getUserAgent(), loginProcessParameters.getRequest());
+        String loginTime = LoginTimeUtil.formatLoginTime(loginProcessParameters.getNow(), timezoneId);
+        return createNewRefreshToken(user, tokenValue, newExpiry, deviceInfo, loginProcessParameters.getClientIp(), loginProcessParameters.getLoginRequest().getVisitorId(), loginTime);
     }
 
     private boolean shouldRotateToken(RefreshToken existing, LocalDateTime now) {

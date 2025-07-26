@@ -1,5 +1,6 @@
 package com.multicloud.auth.controller;
 
+import com.multicloud.auth.dto.LoginProcessParameters;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.responses.ErrorResponse;
 import com.multicloud.auth.dto.responses.GeneralApiResponse;
@@ -61,7 +62,11 @@ public class LoginController {
 //        if(unleash.isEnabled("2fa_enabled")){
 //            logger.info("2FA is enabled");
 //        }
-        return loginService.handleLogin(loginUserDto, userAgent, request);
+        LoginProcessParameters loginProcessParameters = new LoginProcessParameters();
+        loginProcessParameters.setLoginRequest(loginUserDto);
+        loginProcessParameters.setUserAgent(userAgent);
+        loginProcessParameters.setRequest(request);
+        return loginService.handleLogin(loginProcessParameters);
     }
 
 

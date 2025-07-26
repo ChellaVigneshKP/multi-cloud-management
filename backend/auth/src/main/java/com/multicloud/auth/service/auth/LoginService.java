@@ -1,5 +1,6 @@
 package com.multicloud.auth.service.auth;
 
+import com.multicloud.auth.dto.LoginProcessParameters;
 import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.responses.GeneralApiResponse;
 import com.multicloud.auth.dto.responses.LoginResponse;
@@ -20,7 +21,6 @@ import com.multicloud.commonlib.exceptions.TooManyDeviceAttemptsException;
 import com.multicloud.commonlib.exceptions.UsernameNotFoundException;
 import com.multicloud.commonlib.util.common.InputSanitizer;
 import com.multicloud.commonlib.util.common.LoginTimeUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,38 +94,39 @@ public class LoginService {
     }
 
     @Transactional
-    public ResponseEntity<GeneralApiResponse<LoginResponse>> handleLogin(LoginUserDto loginRequest, String userAgent, HttpServletRequest request) {
-            validateLoginRequest(loginRequest);
-            String clientIp = RequestUtil.getClientIp(request);
-            LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-            LocalDateTime lockWindowStart = now.minusHours(lockoutWindowHours);
-            long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
-                    loginRequest.getEmail(), loginRequest.getVisitorId(), lockWindowStart);
-            if (failedAttemptsFromDevice >= maxDeviceAttempts) {
-                log.warn("Too many failed attempts from device for visitorId: {}", loginRequest.getVisitorId());
-                throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
-            }
-            long uniqueVisitorIdFailures = loginAttemptRepository.countDistinctFailedVisitorIds(loginRequest.getEmail(), lockWindowStart);
-            return processAuthenticationFlow(loginRequest, userAgent, request, clientIp, now, failedAttemptsFromDevice, uniqueVisitorIdFailures);
+    public ResponseEntity<GeneralApiResponse<LoginResponse>> handleLogin(LoginProcessParameters loginProcessParameters) {
+        validateLoginRequest(loginProcessParameters.getLoginRequest());
+        loginProcessParameters.setClientIp(RequestUtil.getClientIp(loginProcessParameters.getRequest()));
+        loginProcessParameters.setNow(LocalDateTime.now(ZoneOffset.UTC));
+        LocalDateTime lockWindowStart = loginProcessParameters.getNow().minusHours(lockoutWindowHours);
+        long failedAttemptsFromDevice = loginAttemptRepository.countFailedAttemptsByVisitorId(
+                loginProcessParameters.getLoginRequest().getEmail(), loginProcessParameters.getLoginRequest().getVisitorId(), lockWindowStart);
+        loginProcessParameters.setFailedAttemptsFromDevice(failedAttemptsFromDevice);
+        if (failedAttemptsFromDevice >= maxDeviceAttempts) {
+            log.warn("Too many failed attempts from device for visitorId: {}", loginProcessParameters.getLoginRequest().getVisitorId());
+            throw new TooManyDeviceAttemptsException("Too many failed attempts from this device");
+        }
+        long uniqueVisitorIdFailures = loginAttemptRepository.countDistinctFailedVisitorIds(loginProcessParameters.getLoginRequest().getEmail(), lockWindowStart);
+        loginProcessParameters.setUniqueVisitorIdFailures(uniqueVisitorIdFailures);
+        return processAuthenticationFlow(loginProcessParameters);
     }
 
-    private ResponseEntity<GeneralApiResponse<LoginResponse>> processAuthenticationFlow(LoginUserDto loginRequest, String userAgent, HttpServletRequest request, String clientIp, LocalDateTime now, long failedAttemptsFromDevice, long uniqueVisitorIdFailures) {
-        Optional<User> cachedUserOpt = getUserByEmail(loginRequest.getEmail());
+    private ResponseEntity<GeneralApiResponse<LoginResponse>> processAuthenticationFlow(LoginProcessParameters loginProcessParameters) {
+        Optional<User> cachedUserOpt = getUserByEmail(loginProcessParameters.getLoginRequest().getEmail());
         try {
-            String timezoneId = request.getHeader(DeviceConstants.HEADER_TIMEZONE);
-            User user = authenticateUser(loginRequest, now, clientIp, failedAttemptsFromDevice, uniqueVisitorIdFailures, cachedUserOpt, timezoneId);
-            log.info("User login successful - userId: {}, IP: {}", user.getId(), clientIp);
-            recordLoginAttempt(user, loginRequest.getEmail(), true, clientIp, userAgent, null, loginRequest.getVisitorId());
-            RefreshToken refreshToken = refreshTokenService.handleRefreshToken(user, loginRequest, userAgent, clientIp, now, request);
-            updateUserLoginInfo(user, clientIp, now);
-            boolean isSecure = RequestUtil.isRequestSecure(request);
-            if (user.getFailedAttempts() >= maxDeviceAttempts && uniqueVisitorIdFailures >= globalMaxAttempts) {
-                List<LoginAttempt> loginAttempts = loginAttemptRepository.findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(loginRequest.getEmail(), loginRequest.getVisitorId(), now.minusHours(lockoutWindowHours));
-                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(loginAttempts, user.getFirstName(), loginRequest.getEmail());
+            User user = authenticateUser(loginProcessParameters, cachedUserOpt);
+            log.info("User login successful - userId: {}, IP: {}", user.getId(), loginProcessParameters.getClientIp());
+            recordLoginAttempt(user, loginProcessParameters.getLoginRequest().getEmail(), true, loginProcessParameters.getClientIp(), loginProcessParameters.getUserAgent(), null, loginProcessParameters.getLoginRequest().getVisitorId());
+            RefreshToken refreshToken = refreshTokenService.handleRefreshToken(user, loginProcessParameters);
+            updateUserLoginInfo(user, loginProcessParameters.getClientIp(), loginProcessParameters.getNow());
+            boolean isSecure = RequestUtil.isRequestSecure(loginProcessParameters.getRequest());
+            if (user.getFailedAttempts() >= maxDeviceAttempts && loginProcessParameters.getUniqueVisitorIdFailures() >= globalMaxAttempts) {
+                List<LoginAttempt> loginAttempts = loginAttemptRepository.findRecentFailedAttemptsByEmailExcludingIpAndVisitorId(loginProcessParameters.getLoginRequest().getEmail(), loginProcessParameters.getLoginRequest().getVisitorId(), loginProcessParameters.getNow().minusHours(lockoutWindowHours));
+                asyncEmailNotificationService.produceLoginFromNewDeviceNotification(loginAttempts, user.getFirstName(), loginProcessParameters.getLoginRequest().getEmail());
             }
-            return buildSuccessResponse(user, refreshToken, loginRequest.isRemember(), isSecure);
+            return buildSuccessResponse(user, refreshToken, loginProcessParameters.getLoginRequest().isRemember(), isSecure);
         } catch (Exception e) {
-            recordLoginAttempt(cachedUserOpt.orElse(null), loginRequest.getEmail(), false, clientIp, userAgent, e.getMessage(), loginRequest.getVisitorId());
+            recordLoginAttempt(cachedUserOpt.orElse(null), loginProcessParameters.getLoginRequest().getEmail(), false, loginProcessParameters.getClientIp(), loginProcessParameters.getUserAgent(), e.getMessage(), loginProcessParameters.getLoginRequest().getVisitorId());
             throw e;
         }
     }
@@ -150,13 +151,13 @@ public class LoginService {
         return userRepository.findByEmail(email);
     }
 
-    protected User authenticateUser(LoginUserDto loginRequest, LocalDateTime now, String clientIp, long failedAttemptsFromDevice, long uniqueVisitorIdFailures, Optional<User> cachedUserOpt, String timeZoneId) {
+    protected User authenticateUser(LoginProcessParameters loginProcessParameters, Optional<User> cachedUserOpt) {
         if (cachedUserOpt.isEmpty()) {
             throw new UsernameNotFoundException(INVALID_CREDENTIALS);
         }
         User user = cachedUserOpt.get();
-        boolean updated = verifyCredentials(loginRequest, user, clientIp, failedAttemptsFromDevice, now, uniqueVisitorIdFailures, timeZoneId);
-        updated |= checkAccountStatus(user, now);
+        boolean updated = verifyCredentials(user, loginProcessParameters);
+        updated |= checkAccountStatus(user, loginProcessParameters.getNow());
         if (updated) {
             userRepository.save(user);
         }
@@ -176,16 +177,15 @@ public class LoginService {
         return updated;
     }
 
-    private boolean verifyCredentials(LoginUserDto loginRequest, User user, String clientIp,
-                                      long failedAttemptsFromDevice, LocalDateTime now, long uniqueVisitorIdFailures, String timezoneId) {
+    private boolean verifyCredentials(User user, LoginProcessParameters loginProcessParameters) {
         if (!user.isEnabled()) {
             throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
         }
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(),
-                            loginRequest.getPassword()));
+                            loginProcessParameters.getLoginRequest().getEmail(),
+                            loginProcessParameters.getLoginRequest().getPassword()));
 
             // Reset failed attempts on successful login
             if (user.getFailedAttempts() > 0) {
@@ -193,27 +193,26 @@ public class LoginService {
                 return true;
             }
         } catch (AuthenticationException e) {
-            handleFailedLogin(user, failedAttemptsFromDevice, clientIp, now, uniqueVisitorIdFailures, timezoneId);
+            handleFailedLogin(user, loginProcessParameters);
             throw e;
         }
         return false;
     }
 
-    private void handleFailedLogin(User user, long deviceAttempts, String ip,
-                                   LocalDateTime now, long uniqueVisitorIdFailures, String timezoneId) {
-        boolean shouldLock = deviceAttempts >= maxDeviceAttempts
-                && uniqueVisitorIdFailures >= globalMaxAttempts;
+    private void handleFailedLogin(User user, LoginProcessParameters loginProcessParameters) {
+        boolean shouldLock = loginProcessParameters.getFailedAttemptsFromDevice() >= maxDeviceAttempts
+                && loginProcessParameters.getUniqueVisitorIdFailures() >= globalMaxAttempts;
         int newAttempts = user.getFailedAttempts() + 1;
         boolean willLock = shouldLock || newAttempts >= maxAuthAttempts;
         userRepository.updateFailedAttemptsAndLockStatus(
                 user.getId(),
                 newAttempts,
                 willLock,
-                willLock ? now.plus(getLockoutDuration()) : null
+                willLock ? loginProcessParameters.getNow().plus(getLockoutDuration()) : null
         );
         if (willLock) {
-            String lockTime = LoginTimeUtil.formatLoginTime(now, timezoneId);
-            asyncEmailNotificationService.produceAccountLockNotification(user.getEmail(), ip, lockTime, user.getFirstName());
+            String lockTime = LoginTimeUtil.formatLoginTime(loginProcessParameters.getNow(), loginProcessParameters.getRequest().getHeader(DeviceConstants.HEADER_TIMEZONE));
+            asyncEmailNotificationService.produceAccountLockNotification(user.getEmail(), loginProcessParameters.getClientIp(), lockTime, user.getFirstName());
         }
     }
 
