@@ -4,6 +4,7 @@ import com.multicloud.commonlib.email.dto.SimpleLoginAttemptDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 import java.util.List;
 
@@ -19,7 +20,6 @@ public class SuspiciousAlertEmailRequest extends EmailRequest{
     private String firstName;
     private String changePasswordUrl;
     private List<SimpleLoginAttemptDTO> attempts;
-    private String logoUrl;
     /**
      * Default constructor for SuspiciousAlertEmailRequest.
      * Initializes the email type to SUSPICIOUS_LOGIN_ALERT.
@@ -27,5 +27,13 @@ public class SuspiciousAlertEmailRequest extends EmailRequest{
     public SuspiciousAlertEmailRequest() {
         super();
         this.setType(EmailType.SUSPICIOUS_LOGIN_ALERT);
+    }
+
+    @Override
+    public void populateContext(Context context) {
+        context.setVariable("firstName", firstName);
+        context.setVariable("changePasswordUrl", changePasswordUrl);
+        context.setVariable("attempts", attempts);
+        context.setVariable("logo", getLogoUrl());
     }
 }

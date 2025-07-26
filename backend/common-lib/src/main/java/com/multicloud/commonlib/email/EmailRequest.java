@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 /**
  * Represents a generic email request.
@@ -29,6 +30,8 @@ public abstract class EmailRequest {
     private String to;
     private String subject;
     private EmailType type;
+    private String logoUrl;
+    public abstract void populateContext(Context context);
 
     /**
      * Default constructor for EmailRequest.
