@@ -1,5 +1,7 @@
-package com.multicloud.api_gateway.controller;
+package com.multicloud.gateway.controller;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.server.csrf.CsrfToken;
@@ -12,8 +14,12 @@ import reactor.core.publisher.Mono;
 import java.util.HashMap;
 import java.util.Map;
 
+@RefreshScope
 @RestController
 public class CsrfController {
+
+    @Value("${test.property}")
+    private String testProperty;
 
     @GetMapping("/csrf")
     public Mono<ResponseEntity<Map<String, String>>> getCsrfToken(ServerWebExchange exchange) {
@@ -31,5 +37,10 @@ public class CsrfController {
                     response.put("parameterName", token.getParameterName());
                     return ResponseEntity.ok(response);
                 });
+    }
+
+    @GetMapping("/property")
+    public String getTestProperty() {
+        return testProperty;
     }
 }

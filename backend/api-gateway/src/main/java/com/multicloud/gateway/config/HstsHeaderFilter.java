@@ -1,4 +1,4 @@
-package com.multicloud.api_gateway.config;
+package com.multicloud.gateway.config;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpResponse;

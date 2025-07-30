@@ -1,4 +1,4 @@
-package com.multicloud.api_gateway.filter;
+package com.multicloud.gateway.filter;
 
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;

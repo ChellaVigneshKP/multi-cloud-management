@@ -1,8 +1,8 @@
-package com.multicloud.api_gateway.filter;
+package com.multicloud.gateway.filter;
 
-import com.multicloud.api_gateway.exception.TokenExpiredException;
-import com.multicloud.api_gateway.util.IpAddressUtil;
-import com.multicloud.api_gateway.util.JweUtil;
+import com.multicloud.gateway.exception.TokenExpiredException;
+import com.multicloud.gateway.util.IpAddressUtil;
+import com.multicloud.gateway.util.JweUtil;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

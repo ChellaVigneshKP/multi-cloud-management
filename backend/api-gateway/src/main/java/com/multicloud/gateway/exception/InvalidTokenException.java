@@ -1,4 +1,4 @@
-package com.multicloud.api_gateway.exception;
+package com.multicloud.gateway.exception;
 
 public class InvalidTokenException extends Exception {
     public InvalidTokenException(String message) {
