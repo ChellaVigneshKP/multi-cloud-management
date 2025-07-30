@@ -21,26 +21,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByVerificationCode(String verificationCode);
     Optional<User> findByPasswordResetToken(String token);
 
-    @Query("SELECT u FROM User u WHERE u.email = :email AND u.enabled = true")
-    Optional<User> findEnabledByEmail(@Param("email") String email);
-
-    @Query("SELECT u FROM User u WHERE u.username = :username AND u.enabled = true")
-    Optional<User> findEnabledByUsername(@Param("username") String username);
-
-    @Modifying
-    @Query("UPDATE User u SET u.failedAttempts = :attempts WHERE u.id = :userId")
-    void updateFailedAttempts(@Param("userId") Long userId, @Param("attempts") int attempts);
-
-    @Modifying
-    @Query("UPDATE User u SET u.failedAttempts = u.failedAttempts + 1 WHERE u.id = :userId")
-    void incrementFailedAttempts(@Param("userId") Long userId);
-
-    @Modifying
-    @Query("UPDATE User u SET u.locked = :locked, u.lockoutEnd = :lockoutEnd WHERE u.id = :userId")
-    void updateLockStatus(@Param("userId") Long userId,
-                          @Param("locked") boolean locked,
-                          @Param("lockoutEnd") LocalDateTime lockoutEnd);
-
     @Modifying
     @Query("UPDATE User u SET u.lastLogin = :lastLogin, u.lastLoginIp = :ip WHERE u.id = :userId")
     void updateLastLogin(@Param("userId") Long userId,
@@ -48,21 +28,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
                          @Param("ip") String ip);
 
 
-    // Add this new method
-    @Modifying
-    @Query("UPDATE User u SET u.failedAttempts = u.failedAttempts + 1, " +
-            "u.locked = CASE WHEN (u.failedAttempts + 1) >= :maxAttempts THEN true ELSE u.locked END, " +
-            "u.lockoutEnd = CASE WHEN (u.failedAttempts + 1) >= :maxAttempts THEN :lockoutEnd ELSE u.lockoutEnd END " +
-            "WHERE u.id = :userId")
-    void incrementFailedAttemptsAndLockIfNeeded(
-            @Param("userId") Long userId,
-            @Param("maxAttempts") int maxAttempts,
-            @Param("lockoutEnd") LocalDateTime lockoutEnd);
-
     @Modifying
     @Query("UPDATE User u SET " +
             "u.failedAttempts = :newAttempts, " +
-            "u.locked = :locked, " +
+            "u.temporarilyLocked = :locked, " +
             "u.lockoutEnd = :lockoutEnd " +
             "WHERE u.id = :userId")
     void updateFailedAttemptsAndLockStatus(

@@ -94,6 +94,9 @@ public class User implements UserDetails {
     @Column(name = "locked")
     private boolean locked = false;
 
+    @Column(name = "temporarily_locked", nullable = false)
+    private boolean temporarilyLocked = false;
+
     @Column(name = "lockout_end")
     private LocalDateTime lockoutEnd;
 

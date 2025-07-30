@@ -10,9 +10,19 @@ import React, {
     ReactNode,
     useRef
 } from 'react';
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, CancelTokenSource, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+
+// Constants
+const MAX_RETRY_ATTEMPTS = 2;
+const CSRF_RETRY_ATTEMPTS = 2;
+const REFRESH_RETRY_DELAY = 1000;
+const AUTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const CSRF_RETRY_DELAY = 1000;
+const USERINFO_RETRY_DELAY = 1000;
+const AUTH_FAILURE_COOLDOWN = 10000; // 10 seconds cooldown after auth failure
+const MISSING_AUTH_COOKIE_ERROR = 'Missing authorization cookie';
 
 interface Credentials {
     email: string;
@@ -46,6 +56,7 @@ interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
 interface ApiErrorResponse {
     message: string;
     code?: string;
+    error?: string;
     [key: string]: any;
 }
 
@@ -63,12 +74,6 @@ const api = axios.create({
     withCredentials: true,
     timeout: 30000, // 30 seconds timeout
 });
-
-const MAX_RETRY_ATTEMPTS = 3;
-const CSRF_RETRY_ATTEMPTS = 2;
-const REFRESH_RETRY_DELAY = 1000;
-const AUTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const CSRF_RETRY_DELAY = 1000;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,7 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const authCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const pendingLoginRef = useRef<Promise<void> | null>(null);
     const isMountedRef = useRef(true);
-    const activeRequestsRef = useRef<Set<CancelTokenSource>>(new Set());
+    const activeAbortControllers = useRef<Set<AbortController>>(new Set());
+    const lastUserInfoFetchRef = useRef<number>(0);
+    const userInfoFetchState = useRef({
+        isFetching: false,
+        promise: null as Promise<void> | null,
+    });
+    const timeZoneRef = useRef<string>(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const consecutiveAuthFailuresRef = useRef(0);
+    const lastAuthFailureRef = useRef<number | null>(null);
 
     // Update refs when state changes
     useEffect(() => {
@@ -105,55 +118,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             pendingLoginRef.current = null;
             refreshState.current.promise = null;
             csrfFetchState.current.promise = null;
+            userInfoFetchState.current.promise = null;
 
             if (authCheckIntervalRef.current) {
                 clearInterval(authCheckIntervalRef.current);
             }
 
-            // Cancel all active requests
-            activeRequestsRef.current.forEach(source => source.cancel('Component unmounted'));
-            activeRequestsRef.current.clear();
+            // Abort all active requests
+            activeAbortControllers.current.forEach(controller => controller.abort('Component unmounted'));
+            activeAbortControllers.current.clear();
         };
     }, []);
 
-    const createCancelToken = () => {
-        const source = axios.CancelToken.source();
-        activeRequestsRef.current.add(source);
-        return source.token;
+    const createAbortController = () => {
+        const controller = new AbortController();
+        activeAbortControllers.current.add(controller);
+        return controller;
     };
 
-    const removeCancelToken = (source: CancelTokenSource) => {
-        activeRequestsRef.current.delete(source);
+    const removeAbortController = (controller: AbortController) => {
+        activeAbortControllers.current.delete(controller);
     };
+
+    const setAuthCookie = useCallback((value: boolean) => {
+        const cookieValue = value 
+            ? `isAuthenticated=true; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax; secure`
+            : 'isAuthenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; secure';
+        document.cookie = cookieValue;
+    }, []);
+
+    const clearAuthState = useCallback(() => {
+        setAuthCookie(false);
+        if (isMountedRef.current) {
+            setIsAuthenticated(false);
+            setUser(null);
+            setLoading(false);
+        }
+        csrfTokenRef.current = null;
+        csrfFetchState.current = { isFetching: false, promise: null };
+        lastUserInfoFetchRef.current = 0;
+        consecutiveAuthFailuresRef.current = 0;
+        lastAuthFailureRef.current = Date.now();
+    }, [setAuthCookie]);
 
     const logout = useCallback(async () => {
-        if (isLoggingOutRef.current) return; // Already logging out
+        if (isLoggingOutRef.current) return;
         isLoggingOutRef.current = true;
+        
         try {
-            const cancelToken = createCancelToken();
-            await api.post('/auth/logout', {}, { cancelToken });
+            const controller = createAbortController();
+            await api.post('/auth/logout', {}, { signal: controller.signal });
         } catch (err) {
             if (!axios.isCancel(err)) {
                 console.error('Logout failed:', err);
             }
         } finally {
-            if (isMountedRef.current) {
-                setIsAuthenticated(false);
-                setUser(null);
-                setLoading(false);
-            }
-
-            csrfTokenRef.current = null;
-            
+            setAuthCookie(false); // Clear cookie on logout
+            clearAuthState();
 
             if (authCheckIntervalRef.current) {
                 clearInterval(authCheckIntervalRef.current);
                 authCheckIntervalRef.current = null;
             }
 
+            isLoggingOutRef.current = false;
             router.push('/login');
         }
-    }, [router]);
+    }, [router, clearAuthState]);
 
     const fetchCsrfToken = useCallback(async (): Promise<string> => {
         if (csrfTokenRef.current) {
@@ -167,12 +198,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         csrfFetchState.current.isFetching = true;
         csrfFetchState.current.promise = (async () => {
             for (let attempt = 0; attempt < CSRF_RETRY_ATTEMPTS; attempt++) {
-                const source = axios.CancelToken.source();
-                activeRequestsRef.current.add(source);
+                const controller = createAbortController();
 
                 try {
                     const res = await api.get<{ token: string }>('/csrf', {
-                        cancelToken: source.token
+                        signal: controller.signal
                     });
                     const token = res.data?.token;
                     if (!token) throw new AuthError('No CSRF token received');
@@ -184,12 +214,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     }
 
                     if (attempt === CSRF_RETRY_ATTEMPTS - 1) {
-                        toast.error('Failed to fetch CSRF token');
+                        if (isMountedRef.current) {
+                            toast.error('Failed to fetch CSRF token');
+                        }
                         throw new AuthError('Max CSRF retries exceeded');
                     }
                     await new Promise(resolve => setTimeout(resolve, CSRF_RETRY_DELAY));
                 } finally {
-                    activeRequestsRef.current.delete(source);
+                    removeAbortController(controller);
                 }
             }
             throw new AuthError('Max CSRF retries exceeded');
@@ -207,7 +239,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const requestInterceptor = api.interceptors.request.use(
             async (config: InternalAxiosRequestConfig) => {
                 const extendedConfig = config as ExtendedAxiosRequestConfig;
-                extendedConfig.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                extendedConfig.headers['X-Timezone'] = timeZoneRef.current;
 
                 const safeMethods = ['get', 'head', 'options'];
                 if (
@@ -235,11 +267,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [fetchCsrfToken, logout]);
 
     const refreshTokenWithBackoff = useCallback(async (attempt = 1): Promise<void> => {
-        const source = axios.CancelToken.source();
-        activeRequestsRef.current.add(source);
+        const controller = createAbortController();
 
         try {
-            await api.post('/auth/refresh-token', {}, { cancelToken: source.token });
+            await api.post('/auth/refresh-token', {}, { signal: controller.signal });
+            consecutiveAuthFailuresRef.current = 0; // Reset on success
         } catch (error) {
             if (axios.isCancel(error)) {
                 throw error;
@@ -252,9 +284,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
             throw new AuthError('Token refresh failed', true);
         } finally {
-            activeRequestsRef.current.delete(source);
+            removeAbortController(controller);
         }
     }, []);
+
+    const shouldRetryRequest = (error: AxiosError<ApiErrorResponse>): boolean => {
+        return (
+            error.response?.status === 401 &&
+            error.response?.data?.error === MISSING_AUTH_COOKIE_ERROR
+        );
+    };
 
     const handleApiError = useCallback(async (error: unknown) => {
         if (axios.isCancel(error)) {
@@ -268,9 +307,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const axiosError = error as AxiosError<ApiErrorResponse>;
         const originalRequest = axiosError.config as ExtendedAxiosRequestConfig | undefined;
 
-        // Handle token refresh for 401 errors
+        // Check if we're in cooldown period
+        const now = Date.now();
+        if (lastAuthFailureRef.current && now - lastAuthFailureRef.current < AUTH_FAILURE_COOLDOWN) {
+            return Promise.reject(new AuthError('In auth failure cooldown period', true));
+        }
+
+        // Handle token refresh for 401 errors with specific error message
         if (
-            axiosError.response?.status === 401 &&
+            shouldRetryRequest(axiosError) &&
             originalRequest &&
             (originalRequest._retryCount ?? 0) < MAX_RETRY_ATTEMPTS &&
             !originalRequest.url?.includes('/auth/login') &&
@@ -282,13 +327,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 refreshState.current.isRefreshing = true;
                 refreshState.current.promise = refreshTokenWithBackoff()
                     .catch(async (refreshError) => {
-                        if (refreshError instanceof AuthError && refreshError.isUnauthorized) {
+                        consecutiveAuthFailuresRef.current += 1;
+                        lastAuthFailureRef.current = Date.now();
+                        
+                        if (refreshError instanceof AuthError && refreshError.isUnauthorized && isMountedRef.current) {
                             await logout();
                         }
                         return Promise.reject(refreshError);
                     })
                     .finally(() => {
                         refreshState.current.isRefreshing = false;
+                        refreshState.current.promise = null;
                     });
             }
 
@@ -306,22 +355,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             'Request failed';
 
         if (axiosError.response?.status === 401) {
-            if (isAuthenticatedRef.current) {
+            consecutiveAuthFailuresRef.current += 1;
+            lastAuthFailureRef.current = Date.now();
+            
+            if (isAuthenticatedRef.current && isMountedRef.current) {
+                if (axiosError.response?.data?.error === MISSING_AUTH_COOKIE_ERROR) {
+                    router.push('/login');
+                }
                 await logout();
-                return Promise.reject(new AuthError('Session expired', true));
             }
-
-            return Promise.reject(new AuthError(errorMessage, true));
+            return Promise.reject(new AuthError('Session expired', true));
         }
 
-
-        // Show toast for non-401 errors
-        if (axiosError.response?.status !== 401) {
+        // Show toast only for non-401 errors and if component is mounted
+        if (isMountedRef.current && axiosError.response?.status !== 401) {
             toast.error(errorMessage);
         }
 
         return Promise.reject(new Error(errorMessage));
-    }, [logout, refreshTokenWithBackoff]);
+    }, [logout, refreshTokenWithBackoff, router]);
 
     useEffect(() => {
         const interceptor = api.interceptors.response.use(
@@ -333,42 +385,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [handleApiError]);
 
     const fetchUser = useCallback(async (): Promise<void> => {
-        const source = axios.CancelToken.source();
-        activeRequestsRef.current.add(source);
+        // If we're in cooldown period, skip the request
+        const now = Date.now();
+        if (lastAuthFailureRef.current && now - lastAuthFailureRef.current < AUTH_FAILURE_COOLDOWN) {
+            return;
+        }
+
+        // If we're already fetching, return the existing promise
+        if (userInfoFetchState.current.promise) {
+            return userInfoFetchState.current.promise;
+        }
+
+        // Don't fetch if we just fetched recently (within 1 second)
+        if (now - lastUserInfoFetchRef.current < 1000) {
+            return;
+        }
+
+        userInfoFetchState.current.isFetching = true;
+        userInfoFetchState.current.promise = (async () => {
+            for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+                const controller = createAbortController();
+
+                try {
+                    if (isMountedRef.current) {
+                        setLoading(true);
+                    }
+
+                    const res = await api.get<User>('/auth/userinfo', { 
+                        signal: controller.signal 
+                    });
+                    lastUserInfoFetchRef.current = Date.now();
+                    consecutiveAuthFailuresRef.current = 0;
+
+                    if (isMountedRef.current) {
+                        setUser(res.data);
+                        setIsAuthenticated(true);
+                    }
+                    return; // Success - exit the retry loop
+                } catch (error) {
+                    if (axios.isCancel(error)) {
+                        return;
+                    }
+
+                    if (isMountedRef.current) {
+                        setUser(null);
+                        setIsAuthenticated(false);
+                    }
+
+                    if (error instanceof AuthError && error.isUnauthorized) {
+                        consecutiveAuthFailuresRef.current += 1;
+                        lastAuthFailureRef.current = Date.now();
+                        throw error;
+                    }
+
+                    if (attempt === MAX_RETRY_ATTEMPTS) {
+                        throw new Error('Failed to fetch user after maximum retries');
+                    }
+
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, USERINFO_RETRY_DELAY));
+                } finally {
+                    removeAbortController(controller);
+
+                    if (isMountedRef.current) {
+                        setLoading(false);
+                        setIsInitializing(false);
+                    }
+                }
+            }
+        })();
 
         try {
-            if (isMountedRef.current) {
-                setLoading(true);
-            }
-
-            const res = await api.get<User>('/auth/userinfo', { cancelToken: source.token });
-
-            if (isMountedRef.current) {
-                setUser(res.data);
-                setIsAuthenticated(true);
-            }
-        } catch (error) {
-            if (axios.isCancel(error)) {
-                return;
-            }
-
-            if (isMountedRef.current) {
-                setUser(null);
-                setIsAuthenticated(false);
-            }
-
-            if (error instanceof AuthError && error.isUnauthorized) {
-                throw error;
-            }
-
-            throw new Error('Failed to fetch user');
+            return await userInfoFetchState.current.promise;
         } finally {
-            activeRequestsRef.current.delete(source);
-
-            if (isMountedRef.current) {
-                setLoading(false);
-                setIsInitializing(false);
-            }
+            userInfoFetchState.current.isFetching = false;
+            userInfoFetchState.current.promise = null;
         }
     }, []);
 
@@ -376,7 +467,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
             await fetchUser();
         } catch (error) {
-            console.error('Failed to refresh auth:', error);
+            if (isMountedRef.current) {
+                console.error('Failed to refresh auth:', error);
+            }
             throw error;
         }
     }, [fetchUser]);
@@ -388,8 +481,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 await fetchCsrfToken();
                 await fetchUser();
+                
+                // Only start the interval if we successfully authenticated
+                if (isAuthenticatedRef.current && isMountedRef.current && !authCheckIntervalRef.current) {
+                    authCheckIntervalRef.current = setInterval(() => {
+                        if (isAuthenticatedRef.current && !loading && isMountedRef.current) {
+                            // Skip refresh if we're in cooldown period
+                            const now = Date.now();
+                            if (!lastAuthFailureRef.current || now - lastAuthFailureRef.current >= AUTH_FAILURE_COOLDOWN) {
+                                refreshAuth().catch(() => {});
+                            }
+                        }
+                    }, AUTH_CHECK_INTERVAL);
+                }
             } catch (error) {
-                if (abortController.signal.aborted) return;
+                if (abortController.signal.aborted || !isMountedRef.current) return;
 
                 console.error('Initialization error:', error);
 
@@ -402,24 +508,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         initialize();
 
-        const interval = setInterval(() => {
-            if (isAuthenticatedRef.current && !loading && isMountedRef.current) {
-                refreshAuth().catch(() => { });
-            }
-        }, AUTH_CHECK_INTERVAL);
-
-        if (authCheckIntervalRef.current) {
-            clearInterval(authCheckIntervalRef.current);
-        }
-        authCheckIntervalRef.current = interval;
-
-
         return () => {
             abortController.abort();
-
-            if (authCheckIntervalRef.current) {
-                clearInterval(authCheckIntervalRef.current);
-            }
         };
     }, [fetchUser, fetchCsrfToken, loading, refreshAuth]);
 
@@ -428,8 +518,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return pendingLoginRef.current;
         }
 
-        const source = axios.CancelToken.source();
-        activeRequestsRef.current.add(source);
+        const controller = createAbortController();
 
         try {
             if (isMountedRef.current) {
@@ -439,16 +528,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             pendingLoginRef.current = (async () => {
                 try {
                     await fetchCsrfToken();
-                    await api.post('/auth/login', credentials, { cancelToken: source.token });
+                    await api.post('/auth/login', credentials, { signal: controller.signal });
+                    setAuthCookie(true); // Set cookie on successful login
+                    consecutiveAuthFailuresRef.current = 0;
+                    lastAuthFailureRef.current = null;
                     await fetchUser();
                 } finally {
                     pendingLoginRef.current = null;
-                    activeRequestsRef.current.delete(source);
+                    removeAbortController(controller);
                 }
             })();
 
             await pendingLoginRef.current;
         } catch (error) {
+            setAuthCookie(false); // Ensure cookie is cleared on login failure
             if (axios.isCancel(error)) {
                 return;
             }
@@ -458,7 +551,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setLoading(false);
             }
 
-            if (axios.isAxiosError(error)) {
+            if (axios.isAxiosError(error) && isMountedRef.current) {
                 const message = error.response?.data?.message || 'Login failed';
                 toast.error(message);
                 throw new AuthError(message, error.response?.status === 401);
@@ -466,7 +559,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             throw error;
         }
-    }, [fetchUser, fetchCsrfToken]);
+    }, [fetchUser, fetchCsrfToken, setAuthCookie]);
 
     const value = useMemo<AuthContextType>(() => ({
         isAuthenticated,

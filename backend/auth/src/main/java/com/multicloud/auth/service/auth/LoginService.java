@@ -144,11 +144,11 @@ public class LoginService {
 
     private boolean checkAccountStatus(User user, LocalDateTime now) {
         boolean updated = false;
-        if (user.isLocked()) {
+        if (user.isTemporarilyLocked()) {
             if (user.getLockoutEnd() != null && user.getLockoutEnd().isAfter(now)) {
                 throw new AccountLockedException("Account temporarily locked. Try again later.");
             }
-            user.setLocked(false);
+            user.setTemporarilyLocked(false);
             user.setFailedAttempts(0);
             updated = true;
         }
