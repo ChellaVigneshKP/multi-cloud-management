@@ -38,9 +38,4 @@ public class CsrfController {
                     return ResponseEntity.ok(response);
                 });
     }
-
-    @GetMapping("/property")
-    public String getTestProperty() {
-        return testProperty;
-    }
 }
