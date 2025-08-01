@@ -96,7 +96,7 @@ public class TokenController {
                             "None");
             ResponseCookie isAuthenticated = CookieUtil.createCookie("isAuthenticated", "true", maxAgeSeconds, false, true, "None");
             logger.info("Token refreshed successfully for User: {}", user.getUsername());
-            LoginResponse loginResponse = new LoginResponse("Token refreshed successfully");
+            LoginResponse loginResponse = new LoginResponse(null,"Token refreshed successfully", null);
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, jweTokenCookie.toString())

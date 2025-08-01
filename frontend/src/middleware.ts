@@ -4,20 +4,28 @@ export function middleware(req: NextRequest) {
   const isAuthenticated = req.cookies.get('isAuthenticated')?.value === 'true';
   const { pathname } = req.nextUrl;
 
-  const isProtected =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/profile') ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/clouds') ||
-    pathname.startsWith('/vms');
+  const protectedRoutes = [
+    '/dashboard',
+    '/profile',
+    '/settings',
+    '/clouds',
+    '/vms'
+  ];
 
-  // ✅ Redirect unauthenticated users trying to access protected routes
+  const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
+  const isAuthRoute = pathname === '/login' || pathname === '/register';
+
+  // Redirect unauthenticated users trying to access protected routes
   if (isProtected && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === '/login' && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+  // Redirect authenticated users away from auth routes
+  if (isAuthRoute && isAuthenticated) {
+    const redirectTo = req.nextUrl.searchParams.get('from') || '/dashboard';
+    return NextResponse.redirect(new URL(redirectTo, req.url));
   }
 
   return NextResponse.next();
@@ -25,11 +33,12 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/dashboard',
-    '/profile',
-    '/settings',
-    '/clouds',
-    '/vms',
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/settings/:path*',
+    '/clouds/:path*',
+    '/vms/:path*',
     '/login',
+    '/register'
   ],
 };

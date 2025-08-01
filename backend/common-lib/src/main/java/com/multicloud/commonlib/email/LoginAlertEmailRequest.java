@@ -3,6 +3,7 @@ package com.multicloud.commonlib.email;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 /**
  * Email request object for login alerts.
@@ -21,7 +22,6 @@ public class LoginAlertEmailRequest extends EmailRequest {
     private String mapUrl;
     private String changePasswordUrl;
     private String deviceImagePath;
-    private String logoUrl;
 
     /**
      * Default constructor for LoginAlertEmailRequest.
@@ -30,5 +30,20 @@ public class LoginAlertEmailRequest extends EmailRequest {
     public LoginAlertEmailRequest() {
         super();
         this.setType(EmailType.LOGIN_ALERT);
+    }
+
+    @Override
+    public void populateContext(Context context) {
+        context.setVariable("logo", getLogoUrl());
+        context.setVariable("username", username);
+        context.setVariable("os", os);
+        context.setVariable("browser", browser);
+        context.setVariable("location", location);
+        context.setVariable("country", country);
+        context.setVariable("formattedLoginTime", formattedLoginTime);
+        context.setVariable("clientIp", clientIp);
+        context.setVariable("mapUrl", mapUrl);
+        context.setVariable("changePasswordUrl", changePasswordUrl);
+        context.setVariable("deviceImagePath", deviceImagePath);
     }
 }

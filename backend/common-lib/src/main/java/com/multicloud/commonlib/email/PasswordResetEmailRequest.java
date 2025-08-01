@@ -3,6 +3,7 @@ package com.multicloud.commonlib.email;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 /**
  * Email request object for password reset emails.
@@ -13,7 +14,6 @@ import lombok.Setter;
 public class PasswordResetEmailRequest extends EmailRequest {
     private String firstName;
     private String resetLink;
-    private String logoUrl;
 
     /**
      * Default constructor for PasswordResetEmailRequest.
@@ -22,5 +22,12 @@ public class PasswordResetEmailRequest extends EmailRequest {
     public PasswordResetEmailRequest() {
         super();
         this.setType(EmailType.PASSWORD_RESET);
+    }
+
+    @Override
+    public void populateContext(Context context) {
+        context.setVariable("firstName", firstName);
+        context.setVariable("resetLink", resetLink);
+        context.setVariable("logo", getLogoUrl());
     }
 }

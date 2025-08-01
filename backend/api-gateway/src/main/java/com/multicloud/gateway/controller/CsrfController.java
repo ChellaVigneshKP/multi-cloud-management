@@ -1,4 +1,4 @@
-package com.multicloud.api_gateway.controller;
+package com.multicloud.gateway.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

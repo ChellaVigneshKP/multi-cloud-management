@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Account Locked</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa&family=Open+Sans&display=swap');
+
+        body {
+            font-family: 'Open Sans', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e4edf3;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+        }
+
+        .email-header {
+            padding: 20px;
+            text-align: center;
+            background-color: #00445d;
+            color: #ffffff;
+        }
+
+        .email-header img {
+            height: 40px;
+            vertical-align: middle;
+        }
+
+        .email-header .slogan {
+            font-size: 14px;
+            color: #88b5c4;
+            margin-top: 5px;
+        }
+
+        .email-title {
+            padding: 15px;
+            text-align: center;
+            color: #d63031;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .email-subtitle {
+            padding: 0 20px 10px;
+            text-align: center;
+            color: #555555;
+            font-size: 14px;
+        }
+
+        .email-body {
+            padding: 15px 30px;
+            color: #333333;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: left;
+        }
+
+        .alert-box {
+            background-color: #fceaea;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .details {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .details strong {
+            color: #00445d;
+        }
+
+        .email-footer {
+            background-color: #f2f4f7;
+            padding: 10px 20px;
+            color: #777777;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .email-footer a {
+            color: #00445d;
+            text-decoration: underline;
+        }
+
+        .support-link {
+            display: inline-block;
+            margin-top: 15px;
+            background-color: #00445d;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .app-name {
+            font-family: 'Comfortaa', cursive;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+
+    <!-- Header -->
+    <div class="email-header">
+        <img th:src="${logo}" alt="C-Cloud Logo">
+        <div class="slogan">Centralize Your Clouds. Streamline Your Management.</div>
+    </div>
+
+    <!-- Title -->
+    <div class="email-title">
+        Suspicious Activity Detected
+    </div>
+
+    <!-- Subtitle -->
+    <div class="email-subtitle">
+        We've locked your account temporarily to protect it from unauthorized access.
+    </div>
+
+    <!-- Body Content -->
+    <div class="email-body">
+        <p>Hello <strong th:text="${firstName}">User</strong>,</p>
+
+        <div class="alert-box">
+            Your account has been locked due to multiple suspicious login attempts.
+        </div>
+
+        <div class="details">
+            <p><strong>IP Address:</strong> <span th:text="${clientIp}">0.0.0.0</span></p>
+            <p><strong>Location:</strong> <span th:text="${location}">Unknown</span></p>
+            <p><strong>Time:</strong> <span th:text="${lockTime}">Timestamp</span></p>
+        </div>
+
+        <p>If this activity was not you, we strongly recommend resetting your password and reviewing your account activity.</p>
+
+        <a class="support-link" th:href="${unlockSupportLink}">Unlock Account / Get Help</a>
+
+        <p>Thank you for your attention to this matter. We take your security seriously.</p>
+
+        <p>Best regards,<br><strong class="app-name">C-Cloud Security Team</strong></p>
+    </div>
+
+    <!-- Footer -->
+    <div class="email-footer">
+        <p>If you need help, <a href="mailto:support@chellavignesh.com">contact support</a>.</p>
+        <p>&copy; 2025 <span>chellavignesh.com</span>. All rights reserved.</p>
+    </div>
+
+</div>
+</body>
+</html>

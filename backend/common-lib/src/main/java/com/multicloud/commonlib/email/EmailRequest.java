@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.thymeleaf.context.Context;
 
 /**
  * Represents a generic email request.
@@ -21,16 +22,21 @@ import lombok.Setter;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PasswordResetEmailRequest.class, name = "PASSWORD_RESET"),
         @JsonSubTypes.Type(value = LoginAlertEmailRequest.class, name = "LOGIN_ALERT"),
-        @JsonSubTypes.Type(value = VerificationEmailRequest.class, name = "VERIFICATION")
+        @JsonSubTypes.Type(value = VerificationEmailRequest.class, name = "VERIFICATION"),
+        @JsonSubTypes.Type(value = SuspiciousAlertEmailRequest.class, name = "SUSPICIOUS_LOGIN_ALERT"),
+        @JsonSubTypes.Type(value = AccountLockedEmailRequest.class, name = "ACCOUNT_LOCKED")
 })
 public abstract class EmailRequest {
     private String to;
     private String subject;
     private EmailType type;
+    private String logoUrl;
+    public abstract void populateContext(Context context);
 
     /**
      * Default constructor for EmailRequest.
      */
-    public EmailRequest() {
+    protected EmailRequest() {
+        // Default constructor for deserialization
     }
 }

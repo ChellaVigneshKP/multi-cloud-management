@@ -1,4 +1,4 @@
-package com.multicloud.api_gateway.config;
+package com.multicloud.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +15,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .authorizeExchange(auth -> auth
+                        .pathMatchers("/actuator/health").permitAll()
                         .pathMatchers("/actuator/**").hasRole("ADMINSERVER")
                         .anyExchange().permitAll()
                 )

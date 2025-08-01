@@ -1,13 +1,16 @@
 package com.multicloud.auth.dto.responses;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class LoginResponse {
-    private String message;  // Optional, for confirmation messages
-    public LoginResponse(String message) {
-        this.message = message;
-    }
+    private String userId;
+    private String displayName;
+    private String lastLoginTime;
 }

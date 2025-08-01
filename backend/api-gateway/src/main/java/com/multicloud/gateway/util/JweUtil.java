@@ -1,8 +1,8 @@
-package com.multicloud.api_gateway.util;
+package com.multicloud.gateway.util;
 
-import com.multicloud.api_gateway.exception.InvalidTokenException;
-import com.multicloud.api_gateway.exception.PrivateKeyLoadingException;
-import com.multicloud.api_gateway.exception.TokenExpiredException;
+import com.multicloud.gateway.exception.InvalidTokenException;
+import com.multicloud.gateway.exception.PrivateKeyLoadingException;
+import com.multicloud.gateway.exception.TokenExpiredException;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSADecrypter;
 import com.nimbusds.jwt.JWTClaimsSet;

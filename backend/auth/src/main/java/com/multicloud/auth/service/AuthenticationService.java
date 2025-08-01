@@ -1,24 +1,21 @@
 package com.multicloud.auth.service;
 
-import com.multicloud.auth.dto.LoginUserDto;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
+import com.multicloud.auth.dto.responses.TokenResponse;
 import com.multicloud.auth.entity.RefreshToken;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
 import com.multicloud.auth.repository.UserRepository;
-import com.multicloud.auth.dto.responses.TokenResponse;
-import com.multicloud.auth.util.UserAgentParser;
 import com.multicloud.commonlib.exceptions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Random;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -68,61 +65,12 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());  // Generate verification code
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(15));  // Set expiration time for verification code
         user.setEnabled(false);  // Set account as not enabled
-        sendVerificationEmail(user);  // Send verification email
         User savedUser = userRepository.save(user);  // Save user to the database
+        sendVerificationEmail(user);  // Send verification email
         logger.info("New user registered with username: {}", user.getUsername());  // Log registration event
         return savedUser;  // Return the saved user
     }
 
-    // Method for user authentication
-    public User authenticate(LoginUserDto input, String userAgent, String clientIp) {
-        // Retrieve user by email
-        User user = userRepository.findByEmail(input.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("Username not found"));
-
-        // Check if the account is verified
-        if (!user.isEnabled()) {
-            throw new AccountNotVerifiedException("Account not verified. Please verify your account.");
-        }
-        // Authenticate user with provided credentials
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        input.getEmail(),
-                        input.getPassword()
-                )
-        );
-        String visitorId = input.getVisitorId();
-        logger.info("User: {} logged in from Ip Address: {}", user.getUsername(), clientIp);
-        Optional<RefreshToken> existingTokenOpt = refreshTokenRepository.findByUserAndVisitorId(user, visitorId);
-        String refreshTokenValue;
-        do {
-            refreshTokenValue = UUID.randomUUID().toString();
-        } while (refreshTokenRepository.existsByToken(refreshTokenValue));
-        String[] parsedUserAgent = UserAgentParser.parseUserAgent(userAgent);
-        String deviceInfo = parsedUserAgent[2]+":"+parsedUserAgent[1]+":"+parsedUserAgent[0];
-        boolean isNewVisitorIdWithNewIp = refreshTokenRepository.findByUser(user).stream()
-                .noneMatch(token -> Objects.equals(token.getVisitorId(), visitorId) || Objects.equals(token.getIpAddress(), clientIp));
-        LocalDateTime expiryDate = input.isRemember() ? LocalDateTime.now().plusDays(30) : LocalDateTime.now().plusDays(7);
-        if (existingTokenOpt.isPresent()) {
-            RefreshToken existingToken = existingTokenOpt.get();
-            existingToken.setToken(refreshTokenValue);  // Update the token value
-            existingToken.setExpiryDate(expiryDate); // Update expiry date
-            existingToken.setIpAddress(clientIp);
-            refreshTokenRepository.save(existingToken); // Save the updated token
-        } else {
-            RefreshToken refreshToken = new RefreshToken(user, refreshTokenValue, expiryDate, deviceInfo, clientIp, visitorId);
-            refreshTokenRepository.save(refreshToken);
-            if (isNewVisitorIdWithNewIp) {
-                // Trigger email only if both visitor ID and IP are new
-                logger.info("New Device or IP Address Detected: {}. Invoking sendIpChangeAlertEmail", clientIp);
-                asyncEmailNotificationService.produceLoginAlertNotification(user, clientIp, userAgent);
-            }
-        }
-        user.setLastLogin(LocalDateTime.now());
-        user.setLastLoginIp(clientIp);
-        userRepository.save(user);
-        return user;  // Return authenticated user
-    }
     public RefreshToken getRefreshToken(String token) {
         return refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new TokenNotFoundException("Refresh token not found"));
