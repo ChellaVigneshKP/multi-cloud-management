@@ -46,6 +46,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         // Allow public access to /auth/**
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         // Require ADMINSERVER role for /actuator/**
                         .requestMatchers("/actuator/**").hasRole(roles)
                         // Require authentication for all other requests
