@@ -37,6 +37,7 @@ frontend/.env
 /backend/**/mvnw.cmd
 /backend/**/.mvn/
 /backend/**/mvnw
+**/src/main/resources/certs/
 
 # IDE Specific
 ### STS (Spring Tool Suite)
