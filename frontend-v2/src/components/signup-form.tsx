@@ -13,16 +13,16 @@ import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card"
+import {Loader2} from "lucide-react"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
-import {CountryCode} from "libphonenumber-js";
 import {Divider} from "@/components/custom-ui/Divider"
 import {PasswordStrengthMeter} from "@/components/custom-ui/password-strength-meter";
 import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/auth-types"
+import {DEFAULT_COUNTRY} from "@/lib/constants";
+import {useFlag} from "@unleash/nextjs/client";
 
-const DEFAULT_COUNTRY: CountryCode = "IN"
-
-export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
+export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
     const router = useRouter()
     const [showPassword, setShowPassword] = useState(false)
     const [isPending, startTransition] = useTransition()
@@ -33,12 +33,12 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
         watch,
         setValue,
         clearErrors,
-        formState: { errors },
+        formState: {errors},
         setError,
     } = useForm<SignupData>({
         resolver: zodResolver(signupSchema),
         defaultValues: {
-            contactMethod: { type: "email", value: "" },
+            contactMethod: {type: "email", value: ""},
         },
     })
 
@@ -61,15 +61,20 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
 
     const handleContactTypeToggle = () => {
         const newType = contactMethod.type === "email" ? "phone" : "email"
-        setValue("contactMethod", { type: newType, value: "" }, { shouldValidate: true })
+        if (newType === "phone" && !showPhoneSignup) return
+        setValue("contactMethod", {type: newType, value: ""})
         clearErrors("contactMethod")
     }
 
+    const showGoogle = useFlag("enable-google-login")
+    const showApple = useFlag("enable-apple-login")
+    const showPhoneSignup = useFlag("enable-phone-signup")
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            initial={{opacity: 0, y: 20}}
+            animate={{opacity: 1, y: 0}}
+            transition={{duration: 0.4}}
             className={cn("flex flex-col gap-6", className)}
             {...props}
         >
@@ -81,43 +86,57 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
                         <div className="flex flex-col gap-4">
-                            <Button variant="outline" className="w-full" type="button" aria-label="Sign up with Apple">
-                                <AiFillApple className="mr-2 h-4 w-4" /> Sign up with Apple
-                            </Button>
-                            <Button variant="outline" className="w-full" type="button" aria-label="Sign up with Google">
-                                <FcGoogle className="mr-2 h-4 w-4" /> Sign up with Google
-                            </Button>
+                            {showApple && (
+                                <Button variant="outline" className="w-full" type="button"
+                                        aria-label="Sign up with Apple">
+                                    <AiFillApple className="mr-2 h-4 w-4"/> Sign up with Apple
+                                </Button>
+                            )}
+                            {showGoogle && (
+                                <Button variant="outline" className="w-full" type="button"
+                                        aria-label="Sign up with Google">
+                                    <FcGoogle className="mr-2 h-4 w-4"/> Sign up with Google
+                                </Button>
+                            )}
                         </div>
 
-                        <Divider />
+                        {(showApple || showGoogle) && <Divider/>}
 
                         <div className="grid gap-4">
                             <div className="grid gap-3">
                                 <Label htmlFor="name">Name</Label>
-                                <Input id="name" type="text" autoComplete="name" {...register("name")} />
+                                <Input id="name" type="text" placeholder="Your full name"
+                                       autoComplete="name" {...register("name")} />
                                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                             </div>
 
                             <div className="grid gap-3">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="contactMethod">{contactMethod.type === "email" ? "Email" : "Phone"}</Label>
-                                    <button
-                                        type="button"
-                                        className="text-xs text-muted-foreground hover:text-primary"
-                                        onClick={handleContactTypeToggle}
-                                    >
-                                        Use {contactMethod.type === "email" ? "phone" : "email"} instead
-                                    </button>
+                                    <Label
+                                        htmlFor="contactMethod">{contactMethod.type === "email" ? "Email" : "Phone"}</Label>
+                                    {showPhoneSignup && (
+                                        <button
+                                            type="button"
+                                            className="text-xs text-muted-foreground hover:text-primary"
+                                            onClick={handleContactTypeToggle}
+                                        >
+                                            Use {contactMethod.type === "email" ? "phone" : "email"} instead
+                                        </button>
+                                    )}
                                 </div>
 
                                 {contactMethod.type === "email" ? (
                                     <Input
                                         id="email"
                                         type="email"
+                                        placeholder="you@example.com"
                                         autoComplete="username"
                                         value={contactMethod.value}
                                         onChange={(e) =>
-                                            setValue("contactMethod", { type: "email", value: e.target.value }, { shouldValidate: true })
+                                            setValue("contactMethod", {
+                                                type: "email",
+                                                value: e.target.value
+                                            }, {shouldValidate: true})
                                         }
                                     />
                                 ) : (
@@ -127,7 +146,10 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                                         placeholder="Enter phone number"
                                         value={contactMethod.value}
                                         onChange={(value) =>
-                                            setValue("contactMethod", { type: "phone", value: value || "" }, { shouldValidate: true })
+                                            setValue("contactMethod", {
+                                                type: "phone",
+                                                value: value || ""
+                                            }, {shouldValidate: true})
                                         }
                                         className={cn(
                                             "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
@@ -151,6 +173,7 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                                     <Input
                                         id="password"
                                         className="pr-12"
+                                        placeholder="Create a strong password"
                                         type={showPassword ? "text" : "password"}
                                         autoComplete="new-password"
                                         {...register("password")}
@@ -166,8 +189,9 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                                         </button>
                                     )}
                                 </div>
-                                <PasswordStrengthMeter password={password} />
-                                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                                <PasswordStrengthMeter password={password}/>
+                                {errors.password &&
+                                    <p className="text-xs text-destructive">{errors.password.message}</p>}
                             </div>
 
                             <div className="grid gap-3">
@@ -175,6 +199,7 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                                 <Input
                                     id="confirmPassword"
                                     type="password"
+                                    placeholder="Confirm your password"
                                     autoComplete="new-password"
                                     {...register("confirmPassword")}
                                 />
@@ -186,7 +211,14 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                             {errors.root && <p className="text-xs text-destructive">{errors.root.message}</p>}
 
                             <Button type="submit" className="w-full" disabled={isPending} aria-disabled={isPending}>
-                                {isPending ? <span className="animate-pulse">Creating account...</span> : "Create Account"}
+                                {isPending ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin"/>
+                                        Creating account...
+                                    </span>
+                                ) : (
+                                    "Create Account"
+                                )}
                             </Button>
                         </div>
 
@@ -200,7 +232,8 @@ export function SignupForm({ className, onSignup, ...props }: SignupFormProps) {
                 </CardContent>
             </Card>
 
-            <div className="text-muted-foreground text-center text-xs *:underline *:underline-offset-4 hover:*:text-primary">
+            <div
+                className="text-muted-foreground text-center text-xs *:underline *:underline-offset-4 hover:*:text-primary">
                 By signing up, you agree to our <Link href="/terms">Terms of Service</Link> and{" "}
                 <Link href="/privacy">Privacy Policy</Link>.
             </div>

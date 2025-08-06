@@ -3,8 +3,8 @@ import {isValidPhoneNumber} from "react-phone-number-input";
 import zxcvbn from "zxcvbn";
 import React from "react";
 import {motion} from "framer-motion";
+import {MIN_PASSWORD_SCORE} from "@/lib/constants";
 
-const MIN_PASSWORD_SCORE = 2
 export const signupSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     contactMethod: z.discriminatedUnion("type", [
@@ -45,17 +45,18 @@ export interface SignupFormProps extends React.ComponentProps<typeof motion.div>
 }
 
 export const loginSchema = z.object({
-    identifier: z
-        .string()
+    identifier: z.string()
         .min(1, "Email or phone number is required")
-        .refine(
-            (value) => {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-                return emailRegex.test(value) || isValidPhoneNumber(value)
-            },
-            {
-                message: "Please enter a valid email or phone number",
-            }
-        ),
+        .refine((value) => {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (emailRegex.test(value)) return true
+            return isValidPhoneNumber(value) && value.startsWith('+')
+        }, {
+            message: "Please enter a valid email or phone number with country code",
+        }),
     password: z.string().min(6, "Password must be at least 6 characters"),
 })
+
+export interface LoginFormProps extends React.ComponentProps<typeof motion.div> {
+    onLogin?: (data: { email: string; password: string } | { phone: string; password: string }) => Promise<void>
+}
