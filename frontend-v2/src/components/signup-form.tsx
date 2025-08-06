@@ -6,8 +6,6 @@ import {zodResolver} from "@hookform/resolvers/zod"
 import {useRouter} from "next/navigation"
 import {motion} from "framer-motion"
 import Link from "next/link"
-import {FcGoogle} from "react-icons/fc"
-import {AiFillApple} from "react-icons/ai"
 import {cn} from "@/lib/utils"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
@@ -21,6 +19,8 @@ import {PasswordStrengthMeter} from "@/components/custom-ui/password-strength-me
 import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {useFlag} from "@unleash/nextjs/client";
+import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
+import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
 
 export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
     const router = useRouter()
@@ -85,20 +85,7 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-                        <div className="flex flex-col gap-4">
-                            {showApple && (
-                                <Button variant="outline" className="w-full" type="button"
-                                        aria-label="Sign up with Apple">
-                                    <AiFillApple className="mr-2 h-4 w-4"/> Sign up with Apple
-                                </Button>
-                            )}
-                            {showGoogle && (
-                                <Button variant="outline" className="w-full" type="button"
-                                        aria-label="Sign up with Google">
-                                    <FcGoogle className="mr-2 h-4 w-4"/> Sign up with Google
-                                </Button>
-                            )}
-                        </div>
+                        <SocialLoginButtons />
 
                         {(showApple || showGoogle) && <Divider/>}
 
@@ -232,11 +219,7 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
                 </CardContent>
             </Card>
 
-            <div
-                className="text-muted-foreground text-center text-xs *:underline *:underline-offset-4 hover:*:text-primary">
-                By signing up, you agree to our <Link href="/terms">Terms of Service</Link> and{" "}
-                <Link href="/privacy">Privacy Policy</Link>.
-            </div>
+            <LegalDisclaimer type="signup" />
         </motion.div>
     )
 }

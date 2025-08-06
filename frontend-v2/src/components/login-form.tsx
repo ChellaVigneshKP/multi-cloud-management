@@ -8,8 +8,6 @@ import {useRouter} from "next/navigation"
 import {motion} from "framer-motion"
 import Link from "next/link"
 import {useFlag} from "@unleash/nextjs/client"
-import {FcGoogle} from "react-icons/fc"
-import {AiFillApple} from "react-icons/ai"
 import {Eye, EyeOff, Loader2} from "lucide-react"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
@@ -22,6 +20,9 @@ import {Divider} from "@/components/custom-ui/Divider"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card"
 import {LoginFormProps, loginSchema,} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
+import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
+import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
+
 type LoginData = z.infer<typeof loginSchema>
 
 export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
@@ -104,22 +105,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-                        {(showApple || showGoogle) && (
-                            <div className="flex flex-col gap-4">
-                                {showApple && (
-                                    <Button variant="outline" className="w-full" type="button">
-                                        <AiFillApple className="mr-2 h-4 w-4"/>
-                                        Login with Apple
-                                    </Button>
-                                )}
-                                {showGoogle && (
-                                    <Button variant="outline" className="w-full" type="button">
-                                        <FcGoogle className="mr-2 h-4 w-4"/>
-                                        Login with Google
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                        <SocialLoginButtons />
                         {(showApple || showGoogle) && <Divider/>}
 
                         <div className="grid gap-4">
@@ -243,12 +229,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 </CardContent>
             </Card>
 
-            <div
-                className="text-muted-foreground text-center text-xs *:underline *:underline-offset-4 hover:*:text-primary">
-                By clicking continue, you agree to our{" "}
-                <Link href="/terms">Terms of Service</Link> and{" "}
-                <Link href="/privacy">Privacy Policy</Link>.
-            </div>
+            <LegalDisclaimer type="continue" />
         </motion.div>
     )
 }
