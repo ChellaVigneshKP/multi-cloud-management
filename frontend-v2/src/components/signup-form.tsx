@@ -18,7 +18,7 @@ import "react-phone-number-input/style.css"
 import {CountryCode} from "libphonenumber-js";
 import {Divider} from "@/components/custom-ui/Divider"
 import {PasswordStrengthMeter} from "@/components/custom-ui/password-strength-meter";
-import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/signup-types"
+import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/auth-types"
 
 const DEFAULT_COUNTRY: CountryCode = "IN"
 

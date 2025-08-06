@@ -43,3 +43,19 @@ export interface SignupFormProps extends React.ComponentProps<typeof motion.div>
     onSignup?: (data: SignupData) => Promise<void>
     defaultCountry?: string
 }
+
+export const loginSchema = z.object({
+    identifier: z
+        .string()
+        .min(1, "Email or phone number is required")
+        .refine(
+            (value) => {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                return emailRegex.test(value) || isValidPhoneNumber(value)
+            },
+            {
+                message: "Please enter a valid email or phone number",
+            }
+        ),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+})
