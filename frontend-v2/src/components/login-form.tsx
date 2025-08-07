@@ -106,7 +106,6 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
                         <SocialLoginButtons />
-                        {(showApple || showGoogle) && <Divider/>}
 
                         <div className="grid gap-4">
                             <div className="grid gap-3">

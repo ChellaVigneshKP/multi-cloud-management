@@ -1,9 +1,9 @@
-import { z } from "zod"
-import {isValidPhoneNumber} from "react-phone-number-input";
+import {z} from "zod"
 import zxcvbn from "zxcvbn";
 import React from "react";
 import {motion} from "framer-motion";
 import {MIN_PASSWORD_SCORE} from "@/lib/constants";
+import {parsePhoneNumberFromString} from 'libphonenumber-js/max'
 
 export const signupSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -17,7 +17,10 @@ export const signupSchema = z.object({
             value: z
                 .string()
                 .min(1, "Phone number is required")
-                .refine((value) => isValidPhoneNumber(value), "Please enter a valid international phone number"),
+                .refine((value) => {
+                    const phoneNumber = parsePhoneNumberFromString(value)
+                    return phoneNumber?.isValid() && phoneNumber.getType() === "MOBILE"
+                }, "Only valid mobile numbers are allowed"),
         }),
     ]),
     password: z
@@ -45,14 +48,16 @@ export interface SignupFormProps extends React.ComponentProps<typeof motion.div>
 }
 
 export const loginSchema = z.object({
-    identifier: z.string()
+    identifier: z
+        .string()
         .min(1, "Email or phone number is required")
         .refine((value) => {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             if (emailRegex.test(value)) return true
-            return isValidPhoneNumber(value) && value.startsWith('+')
+            const phoneNumber = parsePhoneNumberFromString(value)
+            return phoneNumber?.isValid() && phoneNumber.getType() === "MOBILE"
         }, {
-            message: "Please enter a valid email or phone number with country code",
+            message: "Please enter a valid mobile number with country code or a valid email",
         }),
     password: z.string().min(6, "Password must be at least 6 characters"),
 })
