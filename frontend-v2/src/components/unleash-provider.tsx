@@ -2,6 +2,7 @@
 
 import { FlagProvider, useFlagsStatus } from "@unleash/nextjs/client";
 import React from "react";
+import {Loading} from '@/components/loading/loading'
 
 interface Props {
     sessionId: string;
@@ -13,9 +14,7 @@ function InnerUnleashProvider({ children }: { children: React.ReactNode }) {
 
     if (!flagsReady) {
         return (
-            <div className="flex h-screen items-center justify-center text-muted-foreground">
-                Initializing feature flags...
-            </div>
+            <Loading/>
         );
     }
 
