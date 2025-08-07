@@ -22,6 +22,7 @@ import {LoginFormProps, loginSchema,} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
 import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
+import { useSocialLoginMessage } from "@/lib/auth-providers"
 
 type LoginData = z.infer<typeof loginSchema>
 
@@ -86,6 +87,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
     }
 
     const showPhoneSignup = useFlag("enable-phone-signup")
+    const socialLoginMessage = useSocialLoginMessage('login')
 
     return (
         <motion.div
@@ -99,7 +101,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Welcome back</CardTitle>
                     <CardDescription>
-                        Login with your Apple or Google account
+                        {socialLoginMessage}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

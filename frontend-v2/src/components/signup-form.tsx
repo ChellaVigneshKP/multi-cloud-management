@@ -20,6 +20,7 @@ import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {useFlag} from "@unleash/nextjs/client";
 import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
 import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
+import {useSocialLoginMessage} from "@/lib/auth-providers";
 
 export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
     const router = useRouter()
@@ -66,6 +67,7 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
     }
 
     const showPhoneSignup = useFlag("enable-phone-signup")
+    const socialLoginMessage = useSocialLoginMessage('signup')
 
     return (
         <motion.div
@@ -78,7 +80,7 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
             <Card>
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Create an account</CardTitle>
-                    <CardDescription>Sign up with your Apple or Google account</CardDescription>
+                    <CardDescription>{socialLoginMessage}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
