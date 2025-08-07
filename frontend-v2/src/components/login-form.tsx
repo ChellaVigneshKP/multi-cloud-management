@@ -20,8 +20,8 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/comp
 import {Checkbox} from "@/components/ui/checkbox"
 import {LoginFormProps, loginSchema,} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
-import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
-import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
+import {LegalDisclaimer} from "@/components/custom-ui/legal-disclaimer";
+import {SocialLogin} from "@/components/custom-ui/social-login";
 import { useSocialLoginMessage } from "@/lib/auth-providers"
 
 type LoginData = z.infer<typeof loginSchema>
@@ -106,7 +106,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-                        <SocialLoginButtons />
+                        <SocialLogin />
 
                         <div className="grid gap-4">
                             <div className="grid gap-3">

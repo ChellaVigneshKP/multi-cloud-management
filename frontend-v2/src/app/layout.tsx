@@ -1,7 +1,7 @@
 import type {Metadata} from "next";
 import {Geist, Geist_Mono} from "next/font/google";
-import {ThemeProvider} from "@/components/theme-provider";
-import {ThemeToggle} from "@/components/theme-toggle";
+import {ThemeProvider} from "@/components/theme/theme-provider";
+import {ThemeToggle} from "@/components/theme/theme-toggle";
 import {UnleashProvider} from "@/components/unleash-provider";
 import {getUnleashSessionId} from "@/lib/unleash-session";
 import "./globals.css";

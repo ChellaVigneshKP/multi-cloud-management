@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { TabsContent } from "@/components/ui/tabs"
+import React from "react";
 
 export const LAST_UPDATED = "August 7, 2025"
 

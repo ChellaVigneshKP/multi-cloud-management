@@ -1,10 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Divider } from "@/components/custom-ui/Divider"
+import { Divider } from "@/components/custom-ui/divider"
 import { useEnabledProviders } from "@/lib/auth-providers"
 
-export function SocialLoginButtons() {
+export function SocialLogin() {
     const enabledProviders = useEnabledProviders()
 
     if (enabledProviders.length === 0) return null

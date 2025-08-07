@@ -18,8 +18,8 @@ import {PasswordStrengthMeter} from "@/components/custom-ui/password-strength-me
 import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {useFlag} from "@unleash/nextjs/client";
-import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
-import {SocialLoginButtons} from "@/components/custom-ui/SocialLoginButtons";
+import {LegalDisclaimer} from "@/components/custom-ui/legal-disclaimer";
+import {SocialLogin} from "@/components/custom-ui/social-login";
 import {useSocialLoginMessage} from "@/lib/auth-providers";
 
 export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
@@ -84,7 +84,7 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-                        <SocialLoginButtons />
+                        <SocialLogin />
 
                         <div className="grid gap-4">
                             <div className="grid gap-3">
