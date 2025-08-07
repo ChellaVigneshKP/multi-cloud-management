@@ -17,6 +17,7 @@ import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card"
+import {Checkbox} from "@/components/ui/checkbox"
 import {LoginFormProps, loginSchema,} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {LegalDisclaimer} from "@/components/custom-ui/LegalDisclaimer";
@@ -30,6 +31,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [identifierType, setIdentifierType] = useState<"email" | "phone">("email")
     const [showPassword, setShowPassword] = useState(false)
+    const [rememberMe, setRememberMe] = useState(false)
 
     const {
         register,
@@ -52,8 +54,8 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 const {identifier, password} = data
                 const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)
                 const payload = isEmail
-                    ? {email: identifier, password}
-                    : {phone: identifier, password}
+                    ? {email: identifier, password, rememberMe}
+                    : {phone: identifier, password, rememberMe}
 
                 if (onLogin) {
                     await onLogin(payload)
@@ -192,6 +194,17 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                                 )}
                             </div>
 
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="rememberMe"
+                                    checked={rememberMe}
+                                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                                />
+                                <Label htmlFor="rememberMe" className="text-sm font-normal leading-none">
+                                    Remember me
+                                </Label>
+                            </div>
+
                             {errors.root && (
                                 <p className="text-xs text-destructive">
                                     {errors.root.message}
@@ -206,9 +219,9 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                             >
                                 {isPending || isSubmitting ? (
                                     <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin"/>
-                    Logging in...
-                  </span>
+                                        <Loader2 className="h-4 w-4 animate-spin"/>
+                                        Logging in...
+                                    </span>
                                 ) : (
                                     "Login"
                                 )}
