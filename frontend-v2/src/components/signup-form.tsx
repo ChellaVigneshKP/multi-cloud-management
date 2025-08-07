@@ -14,7 +14,6 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/comp
 import {Loader2} from "lucide-react"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
-import {Divider} from "@/components/custom-ui/Divider"
 import {PasswordStrengthMeter} from "@/components/custom-ui/password-strength-meter";
 import {SignupData, SignupFormProps, signupSchema} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
@@ -66,8 +65,6 @@ export function SignupForm({className, onSignup, ...props}: SignupFormProps) {
         clearErrors("contactMethod")
     }
 
-    const showGoogle = useFlag("enable-google-login")
-    const showApple = useFlag("enable-apple-login")
     const showPhoneSignup = useFlag("enable-phone-signup")
 
     return (

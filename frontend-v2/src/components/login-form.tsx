@@ -16,7 +16,6 @@ import {cn} from "@/lib/utils"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
-import {Divider} from "@/components/custom-ui/Divider"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card"
 import {LoginFormProps, loginSchema,} from "@/components/custom-ui/auth-types"
 import {DEFAULT_COUNTRY} from "@/lib/constants";
@@ -84,8 +83,6 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
         setShowPassword((prev) => !prev)
     }
 
-    const showGoogle = useFlag("enable-google-login")
-    const showApple = useFlag("enable-apple-login")
     const showPhoneSignup = useFlag("enable-phone-signup")
 
     return (
