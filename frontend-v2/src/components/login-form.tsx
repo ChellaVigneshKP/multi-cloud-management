@@ -23,6 +23,7 @@ import {DEFAULT_COUNTRY} from "@/lib/constants";
 import {LegalDisclaimer} from "@/components/custom-ui/legal-disclaimer";
 import {SocialLogin} from "@/components/custom-ui/social-login";
 import { useSocialLoginMessage } from "@/lib/auth-providers"
+import { useFingerprint } from "@/components/providers/fingerprint-provider";
 
 type LoginData = z.infer<typeof loginSchema>
 
@@ -33,6 +34,7 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
     const [identifierType, setIdentifierType] = useState<"email" | "phone">("email")
     const [showPassword, setShowPassword] = useState(false)
     const [rememberMe, setRememberMe] = useState(false)
+    const {visitorId} = useFingerprint();
 
     const {
         register,
@@ -55,8 +57,8 @@ export function LoginForm({className, onLogin, ...props}: LoginFormProps) {
                 const {identifier, password} = data
                 const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)
                 const payload = isEmail
-                    ? {email: identifier, password, rememberMe}
-                    : {phone: identifier, password, rememberMe}
+                    ? {email: identifier, password, rememberMe, visitorId}
+                    : {phone: identifier, password, rememberMe, visitorId}
 
                 if (onLogin) {
                     await onLogin(payload)

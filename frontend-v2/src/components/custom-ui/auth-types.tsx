@@ -60,6 +60,7 @@ export const loginSchema = z.object({
             message: "Please enter a valid mobile number with country code or a valid email",
         }),
     password: z.string().min(6, "Password must be at least 6 characters"),
+    visitorId: z.string().optional()
 })
 
 export interface LoginFormProps extends React.ComponentProps<typeof motion.div> {

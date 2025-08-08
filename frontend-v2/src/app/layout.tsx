@@ -2,7 +2,7 @@ import type {Metadata} from "next";
 import {Geist, Geist_Mono} from "next/font/google";
 import {ThemeProvider} from "@/components/theme/theme-provider";
 import {ThemeToggle} from "@/components/theme/theme-toggle";
-import {UnleashProvider} from "@/components/unleash-provider";
+import {AppReadyProvider} from "@/components/providers/app-ready-provider";
 import {getUnleashSessionId} from "@/lib/unleash-session";
 import "./globals.css";
 
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({
-                                       children,
-                                   }: Readonly<{
+                                             children,
+                                         }: Readonly<{
     children: React.ReactNode;
 }>) {
     const sessionId = await getUnleashSessionId();
@@ -38,9 +38,9 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            <UnleashProvider sessionId={sessionId}>
+            <AppReadyProvider sessionId={sessionId}>
                 {children}
-            </UnleashProvider>
+            </AppReadyProvider>
             <div className="fixed bottom-4 right-4 z-50">
                 <ThemeToggle/>
             </div>
