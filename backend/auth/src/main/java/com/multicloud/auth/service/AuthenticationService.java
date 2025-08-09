@@ -1,5 +1,6 @@
 package com.multicloud.auth.service;
 
+import com.multicloud.auth.component.UserRegistrationProducer;
 import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
 import com.multicloud.auth.dto.responses.TokenResponse;
@@ -10,9 +11,6 @@ import com.multicloud.auth.repository.UserRepository;
 import com.multicloud.commonlib.exceptions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,39 +23,29 @@ public class AuthenticationService {
     private static final Random RANDOM = new Random();
     private final UserRepository userRepository;  // Repository for user data
     private final PasswordEncoder passwordEncoder;  // Encoder for passwords
-    private final AuthenticationManager authenticationManager;  // Manager for authentication
-    private final KafkaTemplate<String, Map<String, String>> kafkaTemplate;  // Kafka template for message production
-    @Value("${spring.kafka.topic.user-registration}")
-    private String userRegistrationTopic;  // Kafka topic for user registration
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);  // Logger for logging events
     private final AsyncEmailNotificationService asyncEmailNotificationService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JweService jweService;
-    public AuthenticationService(
-            UserRepository userRepository,
-            AuthenticationManager authenticationManager,
-            PasswordEncoder passwordEncoder,
-            KafkaTemplate<String, Map<String, String>> kafkaTemplate,
-            AsyncEmailNotificationService asyncEmailNotificationService,
-            RefreshTokenRepository refreshTokenRepository,
-            JweService jweService
-    ) {
-        this.authenticationManager = authenticationManager;
+    private final UserRegistrationProducer userRegistrationProducer;
+
+    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailNotificationService asyncEmailNotificationService, RefreshTokenRepository refreshTokenRepository, JweService jweService, UserRegistrationProducer userRegistrationProducer) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.kafkaTemplate = kafkaTemplate;
         this.asyncEmailNotificationService = asyncEmailNotificationService;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jweService = jweService;
+        this.userRegistrationProducer = userRegistrationProducer;
     }
+
     // Method for user registration
     public User signup(RegisterUserDto input) {
         // Check if the username already exists
-        if(userRepository.existsByUsername(input.getUsername())) {
+        if (userRepository.existsByUsername(input.getUsername())) {
             throw new UsernameAlreadyExistsException("Username already Exists");
         }
         // Check if the email is already registered
-        if(userRepository.existsByEmail(input.getEmail())) {
+        if (userRepository.existsByEmail(input.getEmail())) {
             throw new EmailAlreadyRegisteredException("Email already registered");
         }
         // Create a new user and set verification properties
@@ -72,9 +60,9 @@ public class AuthenticationService {
     }
 
     public RefreshToken getRefreshToken(String token) {
-        return refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new TokenNotFoundException("Refresh token not found"));
+        return refreshTokenRepository.findByToken(token).orElseThrow(() -> new TokenNotFoundException("Refresh token not found"));
     }
+
     public synchronized TokenResponse refreshTokens(User user, String oldRefreshToken) {
         RefreshToken currentRefreshToken = getRefreshToken(oldRefreshToken);
         if (currentRefreshToken.isExpired()) {
@@ -88,8 +76,7 @@ public class AuthenticationService {
         LocalDateTime expiryDate = currentRefreshToken.getExpiryDate();
         currentRefreshToken.setToken(newRefreshTokenValue);
         refreshTokenRepository.save(currentRefreshToken);
-        return new TokenResponse(newAccessToken, newRefreshTokenValue,
-                expiryDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+        return new TokenResponse(newAccessToken, newRefreshTokenValue, expiryDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
     }
 
     public void logout(String token) {
@@ -102,10 +89,11 @@ public class AuthenticationService {
             throw new TokenNotFoundException("Refresh token not found.");
         }
     }
-    // Method to verify user account
+
+    // Method to verify a user account
     public void verifyUser(VerifyUserDto input) {
         Map<String, String> userDetails = new HashMap<>();
-        Optional<User> optionalUser = userRepository.findByEmail(input.getEmail());  // Find user by email
+        Optional<User> optionalUser = userRepository.findByEmail(input.getEmail());  // Find the user by email
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
             // Check if the user is already verified
@@ -126,8 +114,7 @@ public class AuthenticationService {
                 userDetails.put("username", user.getUsername());
                 logger.info("User with username '{}' verified successfully", user.getUsername());
                 // Send user details to Kafka
-                logger.info("Sending to Kafka - Topic: {}, Key (Email): {}, Value (Username): {}", userRegistrationTopic, user.getUsername(), userDetails);
-                kafkaTemplate.send(userRegistrationTopic, user.getUsername(), userDetails);
+                userRegistrationProducer.sendUserRegisteredEvent(user.getUsername(), userDetails);
             } else {
                 throw new InvalidVerificationCodeException("Invalid verification code");
             }
@@ -138,16 +125,16 @@ public class AuthenticationService {
 
     // Method to resend verification code
     public void resendVerificationCode(String email) {
-        Optional<User> optionalUser = userRepository.findByEmail(email);  // Find user by email
+        Optional<User> optionalUser = userRepository.findByEmail(email);  // Find the user by email
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();
             if (user.isEnabled()) {
                 throw new AccountAlreadyVerifiedException("Account is already verified");
             }
             user.setVerificationCode(generateVerificationCode());  // Generate a new verification code
-            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusHours(1));  // Set new expiration time
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusHours(1));  // Set a new expiration time
             sendVerificationEmail(user);  // Send verification email
-            userRepository.save(user);  // Save updated user
+            userRepository.save(user);  // Save an updated user
         } else {
             throw new UsernameNotFoundException("User not found");
         }
@@ -172,7 +159,6 @@ public class AuthenticationService {
 
     // Method to load user by username
     public User loadUserByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Username not found with username: " + username));
+        return userRepository.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("Username not found with username: " + username));
     }
 }
