@@ -39,4 +39,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("newAttempts") int newAttempts,
             @Param("locked") boolean locked,
             @Param("lockoutEnd") LocalDateTime lockoutEnd);
+
+    @Query("""
+    SELECT DISTINCT u
+    FROM User u
+    LEFT JOIN FETCH u.roles r
+    LEFT JOIN FETCH r.permissions
+    WHERE u.email = :username OR u.username = :username
+""")
+    Optional<User> findByEmailOrUsernameWithRoles(@Param("username") String username);
 }

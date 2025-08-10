@@ -59,9 +59,9 @@ public class LoginController {
     })
     @PostMapping("/login")
     public ResponseEntity<GeneralApiResponse<LoginResponse>> authenticate(@Valid @RequestBody LoginUserDto loginUserDto, @RequestHeader("User-Agent") String userAgent) {
-//        if(unleash.isEnabled("2fa_enabled")){
-//            logger.info("2FA is enabled");
-//        }
+        if(unleash.isEnabled("2fa_enabled")){
+            logger.info("2FA is enabled");
+        }
         LoginProcessParameters loginProcessParameters = new LoginProcessParameters();
         loginProcessParameters.setLoginRequest(loginUserDto);
         loginProcessParameters.setUserAgent(userAgent);

@@ -40,8 +40,7 @@ public class ApplicationConfiguration {
         );
 
         UserDetailsService databaseUserDetailsService = username ->
-                userRepository.findByEmail(username)
-                        .or(() -> userRepository.findByUsername(username))
+                userRepository.findByEmailOrUsernameWithRoles(username) // custom query with JOIN FETCH
                         .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
         return new CompositeUserDetailsService(

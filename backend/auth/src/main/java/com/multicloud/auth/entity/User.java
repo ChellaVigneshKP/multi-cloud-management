@@ -13,14 +13,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users",
         indexes = {
                 @Index(name = "idx_user_email", columnList = "email"),
                 @Index(name = "idx_user_username", columnList = "username"),
-                @Index(name = "idx_user_lock_status", columnList = "locked,lockoutEnd")
+                @Index(name = "idx_user_lock_status", columnList = "locked,lockoutEnd"),
+                @Index(name = "idx_user_mobile", columnList = "mobile_number")
         })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -42,6 +44,17 @@ public class User implements UserDetails {
     @Size(max = 100)
     @MaskSensitive(partial = true)
     private String email;
+
+    @Column(name = "mobile_country_code", length = 5)
+    @Size(max = 5)
+    private String mobileCountryCode;
+
+    @Column(name = "mobile_number", length = 20)
+    @Size(max = 20)
+    private String mobileNumber;
+
+    @Column(name = "mobile_verified", nullable = false)
+    private boolean mobileVerified = false;
 
     @Column(nullable = false, length = 255)
     @NotNull
@@ -103,6 +116,13 @@ public class User implements UserDetails {
     @Version
     private Long version;
 
+    // Role mapping for RBAC
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
+
     public User(String username, String email, String password, String firstName, String lastName) {
         this.username = username;
         this.email = email;
@@ -115,7 +135,10 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return roles.stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(permission -> (GrantedAuthority) permission::getName)
+                .toList();
     }
 
     @Override

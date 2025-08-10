@@ -23,6 +23,12 @@ public class LoginAttempt {
     @Column(nullable = false)
     private String email;
 
+    @Column(name = "mobile_number", length = 15)
+    private String mobileNumber;
+
+    @Column(name = "login_method", length = 20) // EMAIL, MOBILE, USERNAME
+    private String loginMethod;
+
     @Column(nullable = false)
     private LocalDateTime attemptTime;
 
@@ -41,20 +47,43 @@ public class LoginAttempt {
     @Column(name = "visitor_id", length = 64)
     private String visitorId;
 
+    @Column(name = "two_factor_method", length = 20) // SMS, EMAIL, AUTHENTICATOR
+    private String twoFactorMethod;
+
+    @Column(name = "two_factor_success")
+    private Boolean twoFactorSuccess;
+
     @Version
     private Long version;
 
-    // Constructors
     public LoginAttempt() {
         this.attemptTime = LocalDateTime.now();
     }
 
-    public LoginAttempt(User user, String email, boolean successful, String ipAddress, String userAgent, String failureReason,  String  visitorId) {
+    public LoginAttempt(User user, String email, String mobileNumber, String loginMethod,
+                        boolean successful, String ipAddress, String userAgent,
+                        String failureReason, String visitorId, String twoFactorMethod,
+                        Boolean twoFactorSuccess) {
+        this();
+        this.user = user;
+        this.email = email;
+        this.mobileNumber = mobileNumber;
+        this.loginMethod = loginMethod;
+        this.successful = successful;
+        this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
+        this.failureReason = failureReason;
+        this.visitorId = visitorId;
+        this.twoFactorMethod = twoFactorMethod;
+        this.twoFactorSuccess = twoFactorSuccess;
+    }
+
+    public LoginAttempt(User user, String email, boolean successful, String ip, String userAgent, String failureReason, String visitorId) {
         this();
         this.user = user;
         this.email = email;
         this.successful = successful;
-        this.ipAddress = ipAddress;
+        this.ipAddress = ip;
         this.userAgent = userAgent;
         this.failureReason = failureReason;
         this.visitorId = visitorId;

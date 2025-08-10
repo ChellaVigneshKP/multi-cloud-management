@@ -45,6 +45,7 @@ public class UserInfoController {
         userInfo.put("username", username);
         userInfo.put("email", email);
         userInfo.put("userId", userId);
+        userInfo.put("roles", "USER");
         logger.info("UserInfo requested for User ID: {}", userId);
         return ResponseEntity.ok(userInfo);
     }

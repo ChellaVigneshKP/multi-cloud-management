@@ -7,6 +7,7 @@ import com.multicloud.auth.dto.responses.GeneralApiResponse;
 import com.multicloud.auth.dto.responses.LoginResponse;
 import com.multicloud.auth.entity.LoginAttempt;
 import com.multicloud.auth.entity.RefreshToken;
+import com.multicloud.auth.entity.Role;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.LoginAttemptRepository;
 import com.multicloud.auth.repository.UserRepository;
@@ -39,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -213,11 +215,15 @@ public class LoginService {
 
         String userId = user.getId() != null ? InputSanitizer.sanitize(user.getId().toString()) : null;
         String userName = InputSanitizer.sanitize(user.getUsername());
+        List<String> roleNames = user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .toList();
         String lastLogin = user.getLastLogin() != null ? InputSanitizer.sanitize(user.getLastLogin().toString()) : null;
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, jweCookie.toString())
-                .body(GeneralApiResponse.success("Login successful", new LoginResponse(userId, userName, lastLogin)));
+                .body(GeneralApiResponse.success("Login successful", new LoginResponse(userId, userName, lastLogin, roleNames)));
     }
 
     private Duration getLockoutDuration() {

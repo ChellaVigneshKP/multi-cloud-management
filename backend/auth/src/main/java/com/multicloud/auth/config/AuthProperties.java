@@ -6,6 +6,8 @@ import lombok.Getter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
+
 @Getter
 @Validated
 @ConfigurationProperties(prefix = "auth")
@@ -14,11 +16,13 @@ public class AuthProperties {
     private final Token token;
     private final Failure failure;
     private final Cookie cookie;
+    private final List<String> unsecuredPaths;
 
-    public AuthProperties(Token token, Failure failure, Cookie cookie) {
+    public AuthProperties(Token token, Failure failure, Cookie cookie, List<String> unsecuredPaths) {
         this.token = token;
         this.failure = failure;
         this.cookie = cookie;
+        this.unsecuredPaths = unsecuredPaths;
     }
 
     public record Token(

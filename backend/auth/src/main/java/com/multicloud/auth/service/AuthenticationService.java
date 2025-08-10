@@ -5,8 +5,10 @@ import com.multicloud.auth.dto.RegisterUserDto;
 import com.multicloud.auth.dto.VerifyUserDto;
 import com.multicloud.auth.dto.responses.TokenResponse;
 import com.multicloud.auth.entity.RefreshToken;
+import com.multicloud.auth.entity.Role;
 import com.multicloud.auth.entity.User;
 import com.multicloud.auth.repository.RefreshTokenRepository;
+import com.multicloud.auth.repository.RoleRepository;
 import com.multicloud.auth.repository.UserRepository;
 import com.multicloud.commonlib.exceptions.*;
 import org.slf4j.Logger;
@@ -28,14 +30,16 @@ public class AuthenticationService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JweService jweService;
     private final UserRegistrationProducer userRegistrationProducer;
+    private final RoleRepository roleRepository;
 
-    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailNotificationService asyncEmailNotificationService, RefreshTokenRepository refreshTokenRepository, JweService jweService, UserRegistrationProducer userRegistrationProducer) {
+    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, AsyncEmailNotificationService asyncEmailNotificationService, RefreshTokenRepository refreshTokenRepository, JweService jweService, UserRegistrationProducer userRegistrationProducer, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.asyncEmailNotificationService = asyncEmailNotificationService;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jweService = jweService;
         this.userRegistrationProducer = userRegistrationProducer;
+        this.roleRepository = roleRepository;  // Initialize the role repository
     }
 
     // Method for user registration
@@ -53,6 +57,9 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());  // Generate verification code
         user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(15));  // Set expiration time for verification code
         user.setEnabled(false);  // Set account as not enabled
+        Role defaultRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new RuntimeException("Default role USER not found"));
+        user.setRoles(new HashSet<>(Collections.singletonList(defaultRole)));
         User savedUser = userRepository.save(user);  // Save user to the database
         sendVerificationEmail(user);  // Send verification email
         logger.info("New user registered with username: {}", user.getUsername());  // Log registration event
