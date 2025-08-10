@@ -1,4 +1,4 @@
-package com.multicloud.config_server;
+package com.multicloud.configserver;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
