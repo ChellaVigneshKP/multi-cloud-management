@@ -23,7 +23,7 @@
     "formik": "^2.4.6",
     "js-cookie": "^3.0.5",
     "lottie-react": "^2.4.1",
-    "next": "^15.3.5",
+    "next": "^16.1.5",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.0.0",
